@@ -35,12 +35,17 @@ Objetivo: ter tudo instalado e validado antes de escrever qualquer código do pr
 
 Objetivo: projeto Tauri criado, rodando em modo dev, com a janela padrão abrindo.
 
-- [ ] Projeto criado com template `vanilla` + JavaScript
-- [ ] `npm run tauri dev` abre a janela padrão sem erros
-- [ ] Estrutura de pastas (`src/`, `src-tauri/`) entendida e explorada
-- [ ] Primeiro commit do projeto (se for usar controle de versão)
+- [x] Projeto criado com template `vanilla` + JavaScript — via `npm create tauri-app@latest -- select-translate-scaffold --manager npm --template vanilla -y`
+- [x] `npm run tauri dev` abre a janela padrão sem erros — compilou em 3m58s (`dev profile`) e a janela abriu, confirmado pelo usuário
+- [x] Estrutura de pastas (`src/`, `src-tauri/`) entendida e explorada
+- [x] Primeiro commit do projeto — commit do scaffold nesta mesma fase
 
-**Critério de pronto:** você consegue editar `src/index.html`, salvar, e ver a mudança refletida na janela automaticamente (hot reload).
+**Critério de pronto:** você consegue editar `src/index.html`, salvar, e ver a mudança refletida na janela automaticamente (hot reload). ✅ Janela abriu sem erros, confirmado pelo usuário em 2026-08-15. O teste explícito de hot-reload (editar e salvar `index.html` com o dev server rodando) não foi verificado passo a passo nesta sessão — vale confirmar na prática antes da Fase 3.
+
+**Observações:**
+- O projeto foi movido de `/home/joaovitor/www/experiments/select-translate` (WSL) para `C:\Users\joaov\projetos\select-translate` (disco nativo do Windows, também acessível pelo WSL em `/mnt/c/Users/joaov/projetos/select-translate`). Motivo: ferramentas Windows (`npm`, `cargo`) spawnam sub-processos via `cmd.exe`, que **não suporta caminho UNC** (`\\wsl.localhost\...`) como diretório de trabalho — silenciosamente cai para `C:\Windows`. Trabalhar num caminho nativo do Windows evita esse problema. O Git funciona normalmente a partir de `/mnt/c/...` pelo WSL.
+- `git config core.fileMode false` foi definido neste repositório porque o mount do Windows (`drvfs`) marca todos os arquivos como executáveis, gerando diffs de modo de arquivo sem mudança real de conteúdo.
+- `create-tauri-app` sempre cria uma subpasta nova com o nome do projeto; o scaffold foi gerado numa pasta temporária irmã (`select-translate-scaffold`) e depois movido para a raiz do projeto. Os nomes internos (`package.json`, `src-tauri/Cargo.toml`, `tauri.conf.json`, `main.rs`) foram renomeados de `select-translate-scaffold`/`select_translate_scaffold_lib` para `select-translate`/`select_translate_lib`.
 
 ---
 

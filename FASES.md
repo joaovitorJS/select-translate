@@ -15,14 +15,18 @@
 
 Objetivo: ter tudo instalado e validado antes de escrever qualquer código do projeto.
 
-- [ ] Rust instalado via rustup (`rustc --version` funciona)
-- [ ] Visual Studio Build Tools com workload C++ Desktop instalado
-- [ ] WebView2 Runtime confirmado no Windows
-- [ ] Node.js LTS instalado (`node --version`, `npm --version`)
-- [ ] Tauri CLI instalado (`cargo tauri --version`)
-- [ ] VS Code + extensões rust-analyzer e Tauri
+- [x] Rust instalado via rustup (`rustc --version` funciona) — `rustc 1.97.1`, `cargo 1.97.1`
+- [x] Visual Studio Build Tools com workload C++ Desktop instalado — `cl.exe` confirmado em `VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\`
+- [x] WebView2 Runtime confirmado no Windows — já vinha pré-instalado
+- [x] Node.js LTS instalado (`node --version`, `npm --version`) — `v24.19.0` / `npm 11.17.0`
+- [x] Tauri CLI instalado (`cargo tauri --version`) — `tauri-cli 2.11.4`
+- [x] VS Code + extensões rust-analyzer e Tauri — `rust-lang.rust-analyzer` e `tauri-apps.tauri-vscode` instaladas
 
-**Critério de pronto:** `npm create tauri-app@latest` roda sem erros de dependência faltando.
+**Critério de pronto:** `npm create tauri-app@latest` roda sem erros de dependência faltando. ✅ Ferramentas validadas em 2026-08-15.
+
+**Observações:**
+- A workload C++ do Build Tools, com `--add Microsoft.VisualStudio.Workload.VCTools` sozinho, instalou só os componentes *obrigatórios* e ficou sem o compilador (`cl.exe`), pois ele é *recomendado*, não obrigatório, dentro da workload. Foi necessário reinstalar com a flag `--includeRecommended` para trazer o `Microsoft.VisualStudio.Component.VC.Tools.x86.x64`. Se for reinstalar em outra máquina, já use `--includeRecommended` de primeira.
+- O instalador do Node.js deixou o `npm` bloqueado no PowerShell pela política de execução de scripts padrão (`Restricted`). Foi ajustado para `RemoteSigned` no escopo do usuário atual (`Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`), que é o mínimo necessário para os scripts `.ps1` do npm rodarem.
 
 ---
 

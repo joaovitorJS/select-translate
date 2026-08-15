@@ -4,7 +4,9 @@ Instruções para o Claude Code ao trabalhar neste repositório.
 
 ## Sobre o projeto
 
-**Select Translate** é um aplicativo desktop nativo para Windows (com portabilidade futura para Linux) que traduz texto selecionado em qualquer programa. O usuário seleciona um texto em qualquer app (navegador, Bloco de Notas, Word, PDF, editor de código, app de mensagens), captura via atalho global configurável ou modo automático (monitoramento de clipboard), e recebe a tradução (API DeepL) numa janela própria, com histórico persistente. O app roda em segundo plano, minimizado na bandeja do sistema, e é distribuído como instalador nativo (`.exe`/`.msi`) — nunca como site ou algo dependente de navegador.
+**Select Translate** é um aplicativo desktop nativo para Windows (com portabilidade futura para Linux) que traduz texto selecionado em qualquer programa. O usuário seleciona um texto em qualquer app (navegador, Bloco de Notas, Word, PDF, editor de código, app de mensagens), captura via atalho global configurável ou modo automático (monitoramento de clipboard), e recebe a tradução numa janela própria, com histórico persistente. O app roda em segundo plano, minimizado na bandeja do sistema, e é distribuído como instalador nativo (`.exe`/`.msi`) — nunca como site ou algo dependente de navegador.
+
+A tradução é feita por um **provedor plugável**: DeepL API e Microsoft Azure Translator são suportados desde a Fase 2 (`src-tauri/src/traducao/`), escolhidos hoje por variável de ambiente e, a partir da Fase 5, por uma tela de Configurações.
 
 ## Documentos de referência
 
@@ -15,10 +17,10 @@ Sempre que for implementar algo, localize a fase correspondente em `FASES.md` e 
 
 ## Stack técnica (resumo)
 
-- **Backend**: Rust (`src-tauri/`) — Tauri v2, `enigo` (simulação de teclado), `reqwest` (HTTP/DeepL), plugins oficiais Tauri (`global-shortcut`, `clipboard-manager`, `sql`, `store`, `autostart`, `single-instance`).
+- **Backend**: Rust (`src-tauri/`) — Tauri v2, `enigo` (simulação de teclado), `reqwest` (HTTP), plugins oficiais Tauri (`global-shortcut`, `clipboard-manager`, `sql`, `store`, `autostart`, `single-instance`).
 - **Frontend**: HTML/CSS/JS vanilla (`src/`) — sem framework, por design (ver GUIA.md §1).
 - **Banco de dados**: SQLite local via `tauri-plugin-sql`.
-- **Tradução**: API DeepL.
+- **Tradução**: módulo `src-tauri/src/traducao/` com um provedor por submódulo (`deepl.rs`, `azure.rs`) e um dispatcher em `mod.rs` (enum `ConfiguracaoProvedor` + `traduzir()`). Ao adicionar um novo provedor, siga o mesmo padrão: submódulo com `fn traduzir(texto, idioma, credenciais...)`, variante no enum, e mapeamento de idioma/env vars em `mod.rs`.
 
 ## Fluxo de trabalho por fase (IMPORTANTE)
 
@@ -38,5 +40,5 @@ Nunca avance para a fase seguinte sem que a fase atual esteja com os itens marca
 
 ## Notas adicionais
 
-- Segredos (API key do DeepL etc.) nunca devem ser commitados hardcoded no código-fonte além do uso temporário descrito explicitamente na Fase 2 do `FASES.md` — a partir da Fase 5, a chave passa a vir exclusivamente da tela de Configurações.
+- Segredos (API keys de provedores de tradução etc.) nunca devem ser commitados hardcoded no código-fonte. Na Fase 2, eles vêm de variáveis de ambiente (`DEEPL_API_KEY`, `AZURE_TRANSLATOR_KEY`/`AZURE_TRANSLATOR_REGION`, `TRANSLATION_PROVIDER`) — nunca de um valor literal no código nem de um arquivo commitado. A partir da Fase 5, passam a vir exclusivamente da tela de Configurações.
 - Ao adicionar um novo plugin Tauri, sempre atualizar `src-tauri/capabilities/default.json` na mesma alteração (ver GUIA.md §13) — plugin sem permissão declarada falha silenciosamente.

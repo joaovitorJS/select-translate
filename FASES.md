@@ -54,14 +54,22 @@ Objetivo: projeto Tauri criado, rodando em modo dev, com a janela padrão abrind
 
 Objetivo: provar que o núcleo funciona — selecionar texto em qualquer app, apertar um atalho fixo, ver a tradução aparecer (mesmo que só num `println!`/`console.log` por enquanto). Esta é a fase de **maior risco técnico** do projeto — se algo não vai funcionar como esperado, é aqui que vai aparecer.
 
-- [ ] Atalho global fixo registrado (ex: `Ctrl+Alt+T`, ainda não configurável)
-- [ ] Simulação de `Ctrl+C` com `enigo` funcionando
-- [ ] Leitura do clipboard após a simulação funcionando
-- [ ] Conta DeepL criada e API key obtida
-- [ ] Chamada à API do DeepL funcionando via `reqwest`, com a chave hardcoded temporariamente (nunca vai para o instalador final assim — é só para validar o fluxo)
-- [ ] Resultado aparece em qualquer lugar visível (terminal, `alert()`, ou texto simples na janela)
+- [x] Atalho global fixo registrado (`CommandOrControl+Alt+T`, ainda não configurável)
+- [x] Simulação de `Ctrl+C` com `enigo` funcionando
+- [x] Leitura do clipboard após a simulação funcionando
+- [x] Módulo de tradução com suporte a múltiplos provedores (`src-tauri/src/traducao/`: `deepl.rs`, `azure.rs`, dispatcher em `mod.rs`)
+- [x] Conta e API key obtidas do DeepL (Azure Translator implementado e testado só via unit tests — sem credencial real testada ainda)
+- [x] Chamada funcionando via `reqwest` ao provedor configurado, com credenciais lidas de variáveis de ambiente (`TRANSLATION_PROVIDER`, `DEEPL_API_KEY` ou `AZURE_TRANSLATOR_KEY`/`AZURE_TRANSLATOR_REGION`) — nunca hardcoded no código, nunca commitado
+- [x] Resultado aparece em qualquer lugar visível (terminal com `println!` de debug + `alert()` na janela via evento `nova-traducao`)
 
-**Critério de pronto:** selecionar um texto no navegador, no Bloco de Notas e no Word, apertar o atalho, e ver a tradução em português correta nos três casos. Se falhar em algum app específico, anote — vira item de troubleshooting mais adiante.
+**Critério de pronto:** ✅ Validado em 2026-08-15 com o Bloco de Notas e uma página web no Edge, usando DeepL — texto selecionado, `Ctrl+Alt+T`, tradução em português apareceu no `alert()`. Word e PDF ainda não testados manualmente; Azure Translator não testado com credencial real (só unit tests). Vale confirmar isso antes da Fase 10.
+
+**Observações:**
+- Decisão tomada durante a implementação: o app suporta **múltiplos provedores de tradução** desde já (não só na Fase 12 como estava planejado originalmente) — motivo prático: a conta DeepL do usuário ficou temporariamente inacessível, então o Microsoft Azure Translator foi adicionado como alternativa. A arquitetura usa um enum `ConfiguracaoProvedor` (`DeepL { api_key }` / `AzureTranslator { api_key, regiao }`) com um `match` despachando para o submódulo certo — adicionar um novo provedor no futuro segue o mesmo padrão.
+- **Dois bugs reais encontrados e corrigidos na simulação de Ctrl+C** (não estavam previstos no `GUIA.md` original — o guia foi atualizado com o código corrigido):
+  1. `enigo` tem dois jeitos de simular uma tecla: `Key::Unicode(char)` (injeta o caractere diretamente, ignorando modificadores como Ctrl) e `Key::Other(codigo_vk)` (simula a tecla física de verdade). Usar `Key::Unicode('c')` fazia o app de destino receber um "c" digitado (ou um símbolo, dependendo do layout de teclado) em vez do atalho de copiar. Corrigido usando `Key::Other(0x43)` (VK_C do Windows).
+  2. Mesmo com a tecla certa, o atalho ainda falhava: no instante em que o atalho global (`Ctrl+Alt+T`) dispara, as teclas físicas ainda estão pressionadas pelo usuário. Simular Ctrl+C nesse momento fazia o app de destino receber `Ctrl+Alt+C` (Alt real ainda down), não `Ctrl+C`. Corrigido soltando explicitamente Alt/Shift/Ctrl (via `Direction::Release`) antes de simular o Ctrl+C de verdade. Esse é um padrão a repetir em qualquer automação de teclado disparada a partir de um atalho global.
+- Logs de debug (`[select-translate] [debug] Clipboard antes/depois: ...`) foram deixados no código propositalmente — úteis para diagnosticar a Fase 6 (modo automático) também. Podem ser removidos/reduzidos quando a Fase 3 substituir esse fluxo por UI de verdade.
 
 ---
 
@@ -98,16 +106,16 @@ Objetivo: toda tradução feita fica salva e consultável, mesmo depois de fecha
 ## Fase 5 — Configurações (fecha o MVP)
 *(GUIA.md §11)*
 
-Objetivo: remover os valores fixos da Fase 2 (atalho hardcoded, API key hardcoded) e tornar tudo configurável pelo usuário — **este é o fim do MVP**.
+Objetivo: remover os valores fixos da Fase 2 (atalho fixo, credenciais por variável de ambiente) e tornar tudo configurável pelo usuário — **este é o fim do MVP**.
 
 - [ ] Plugin `tauri-plugin-store` instalado
-- [ ] Tela de configurações funcional: campo de atalho, idioma de destino, campo de API key
+- [ ] Tela de configurações funcional: campo de atalho, idioma de destino, **seletor de provedor de tradução** (DeepL / Azure Translator) com os campos de credencial correspondentes (API key para DeepL; API key + região para Azure)
 - [ ] Salvar configurações persiste entre reinícios do app
 - [ ] Trocar o atalho na tela realmente re-registra o atalho global (chamando o command `registrar_atalho`)
 - [ ] Erro de atalho em conflito é exibido de forma amigável (não trava o app)
-- [ ] API key deixa de estar hardcoded no código-fonte
+- [ ] Credenciais deixam de vir de variável de ambiente — passam a vir do `store` configurado pela tela
 
-**Critério de pronto:** apagar toda referência hardcoded de atalho/API key do código; configurar tudo pela tela; reiniciar o app; confirmar que as configurações continuam aplicadas.
+**Critério de pronto:** apagar toda referência a variável de ambiente/atalho fixo do código; configurar tudo pela tela (incluindo trocar de provedor); reiniciar o app; confirmar que as configurações continuam aplicadas.
 
 > ✅ **Ao final da Fase 5, você tem um MVP completo e usável no dia a dia**, mesmo rodando via `npm run tauri dev`. As fases seguintes são refinamentos de experiência (segundo plano, modo automático) e distribuição (instalador).
 
@@ -197,7 +205,7 @@ Fora do escopo imediato — só iniciar depois que o app estiver estável e em u
 ## Fase 12 — (Futuro) Melhorias
 *(GUIA.md §17)*
 
-Backlog de ideias, sem compromisso de prazo: múltiplos serviços de tradução, detecção automática de idioma, atalhos por idioma de destino, exportação de histórico, tema claro/escuro, leitura em voz alta.
+Backlog de ideias, sem compromisso de prazo: mais provedores de tradução (Google Translate, Microsoft Translator já resolvido na Fase 2/5 como Azure Translator, LibreTranslate self-hosted etc.), fallback automático entre provedores se um estiver fora do ar, detecção automática de idioma, atalhos por idioma de destino, exportação de histórico, tema claro/escuro, leitura em voz alta.
 
 ---
 

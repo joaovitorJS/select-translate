@@ -11,7 +11,7 @@
 5. [Ícone na bandeja do sistema](#5-ícone-na-bandeja-do-sistema-system-tray)
 6. [Atalho global configurável](#6-atalho-global-configurável)
 7. [Capturando o texto selecionado](#7-capturando-o-texto-selecionado)
-8. [Integrando com a API do DeepL](#8-integrando-com-a-api-do-deepl)
+8. [Integrando com provedores de tradução (DeepL e Azure Translator)](#8-integrando-com-provedores-de-tradução-deepl-e-azure-translator)
 9. [Interface do app](#9-interface-do-app)
 10. [Histórico persistente](#10-histórico-persistente)
 11. [Tela de configurações](#11-tela-de-configurações)
@@ -36,7 +36,7 @@ Você pediu um app **nativo**, instalável, que **não** dependa de navegador ne
 | Python + PyQt | Empacotamento em `.exe` instalável é frágil e a interface fica menos polida. |
 | **Tauri (Rust)** | Roda a interface num **webview local** (o motor de renderização já embutido no seu sistema operacional — no Windows é o WebView2 da Microsoft), sem servidor, sem internet para a UI, sem navegador externo. Gera instalador nativo (`.exe`/`.msi`) no Windows e (`.deb`/`.AppImage`) no Linux, a partir de praticamente o mesmo código. |
 
-Ou seja: o Tauri **não é** "um site rodando no navegador". É um programa `.exe` de verdade, que só usa a tecnologia web (HTML/CSS/JS) para desenhar a tela, da mesma forma que o próprio Windows usa HTML internamente em partes do Explorer. Toda a lógica pesada (capturar texto, falar com a API do DeepL, ler/gravar banco de dados, atalho global, bandeja do sistema) roda em **Rust**, compilado nativamente.
+Ou seja: o Tauri **não é** "um site rodando no navegador". É um programa `.exe` de verdade, que só usa a tecnologia web (HTML/CSS/JS) para desenhar a tela, da mesma forma que o próprio Windows usa HTML internamente em partes do Explorer. Toda a lógica pesada (capturar texto, falar com o provedor de tradução, ler/gravar banco de dados, atalho global, bandeja do sistema) roda em **Rust**, compilado nativamente.
 
 ### Arquitetura em alto nível
 
@@ -47,7 +47,7 @@ Ou seja: o Tauri **não é** "um site rodando no navegador". É um programa `.ex
   Atalho global ────►│  ┌──────────────┐                          │
   (Ctrl+Alt+T)        │  │  Rust (core)  │                          │
                      │  │              │      ┌─────────────┐    │
-  Clipboard ─────────►│  │  1. Captura   ├─────►│  DeepL API   │    │
+  Clipboard ─────────►│  │  1. Captura   ├─────►│ DeepL / Azure│    │
   (modo automático)   │  │     texto     │      │  (internet)  │    │
                      │  │  2. Chama     │◄─────┤             │    │
                      │  │     DeepL     │      └─────────────┘    │
@@ -75,7 +75,7 @@ Fluxo alternativo (modo automático): toda vez que você copia algo (`Ctrl+C` no
 | Selecionar texto em qualquer app | Não existe API universal para "ler a seleção atual" de outro programa. Usamos o truque real que apps como PopClip/QTranslate usam: simular `Ctrl+C` (crate `enigo`) e ler o clipboard. |
 | Atalho global configurável | Plugin oficial `tauri-plugin-global-shortcut`. |
 | Captura automática (opcional) | Monitoramento do clipboard (polling) via `tauri-plugin-clipboard-manager`. |
-| Enviar para tradução | Chamada HTTP à API do DeepL, feita em Rust com a crate `reqwest`. |
+| Enviar para tradução | Chamada HTTP a um provedor plugável (DeepL ou Azure Translator), feita em Rust com a crate `reqwest`. |
 | Mostrar resultado numa janela própria | Janela do Tauri com HTML/CSS/JS simples (sem framework). |
 | Histórico consultável | `tauri-plugin-sql` (SQLite local). |
 | Rodar em segundo plano / bandeja | Tray API nativa do Tauri v2 + `tauri-plugin-single-instance`. |
@@ -395,23 +395,30 @@ O **toggle** entre modo manual (atalho) e automático (clipboard) é simplesment
 
 ---
 
-## 8. Integrando com a API do DeepL
+## 8. Integrando com provedores de tradução (DeepL e Azure Translator)
 
-### 8.1. Obtendo a API key
+O app não fica travado a um único serviço de tradução: o módulo `src-tauri/src/traducao/` define um **provedor plugável**. Cada provedor vira um submódulo com sua própria chamada HTTP e seu próprio jeito de "montar o payload" e "extrair a tradução da resposta"; um dispatcher central decide qual provedor chamar. Isso resolve dois problemas de uma vez: (1) contas de API às vezes ficam temporariamente indisponíveis (foi o motivo real de adicionar um segundo provedor durante a Fase 2 deste projeto), e (2) é o mesmo ponto de extensão que a Fase 12 já previa para "múltiplos serviços de tradução" — só que resolvido cedo, de forma simples.
+
+```
+src-tauri/src/traducao/
+├── mod.rs    # enum ConfiguracaoProvedor + dispatcher traduzir()
+├── deepl.rs  # chamada à API do DeepL
+└── azure.rs  # chamada à API do Microsoft Azure Translator (Cognitive Services)
+```
+
+### 8.1. DeepL
 
 1. Crie uma conta em [deepl.com/pro-api](https://www.deepl.com/pro-api) (plano **Free** tem 500.000 caracteres/mês, sem custo).
 2. Copie a **Authentication Key** no painel da conta.
-3. **Não deixe essa chave fixa no código-fonte.** Ela deve ser digitada pelo usuário na tela de configurações (seção 11) e salva localmente (ex: no SQLite ou em um arquivo de config local do Tauri).
 
-### 8.2. Chamando a API a partir do Rust
-
-Adicione a crate de requisições HTTP:
+Adicione as crates de requisições HTTP e serialização:
 
 ```
 cargo add reqwest --features json
 cargo add serde --features derive
-cargo add tokio --features full
 ```
+
+`src-tauri/src/traducao/deepl.rs`:
 
 ```rust
 use serde::{Deserialize, Serialize};
@@ -432,34 +439,171 @@ struct Traducao {
     text: String,
 }
 
-#[tauri::command]
-async fn traduzir(texto: String, idioma_destino: String, api_key: String) -> Result<String, String> {
+/// Contas Free do DeepL usam um endpoint diferente de contas Pro;
+/// a chave de contas Free sempre termina em ":fx".
+fn endpoint(api_key: &str) -> &'static str {
+    if api_key.trim().ends_with(":fx") {
+        "https://api-free.deepl.com/v2/translate"
+    } else {
+        "https://api.deepl.com/v2/translate"
+    }
+}
+
+fn extrair_traducao(corpo_json: &str) -> Result<String, String> {
+    let resposta: DeepLResponse = serde_json::from_str(corpo_json)
+        .map_err(|e| format!("Resposta inesperada da API do DeepL: {e}"))?;
+
+    resposta.translations.first()
+        .map(|t| t.text.clone())
+        .ok_or_else(|| "Nenhuma tradução retornada pela API do DeepL".to_string())
+}
+
+pub async fn traduzir(texto: &str, idioma_destino: &str, api_key: &str) -> Result<String, String> {
     let cliente = reqwest::Client::new();
     let resposta = cliente
-        .post("https://api-free.deepl.com/v2/translate")
-        .header("Authorization", format!("DeepL-Auth-Key {}", api_key))
+        .post(endpoint(api_key))
+        .header("Authorization", format!("DeepL-Auth-Key {api_key}"))
         .json(&DeepLRequest {
-            text: vec![texto],
-            target_lang: idioma_destino,
+            text: vec![texto.to_string()],
+            target_lang: idioma_destino.to_string(),
         })
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Falha ao conectar com o DeepL: {e}"))?;
 
     if !resposta.status().is_success() {
-        return Err(format!("Erro da API DeepL: {}", resposta.status()));
+        return Err(format!("Erro da API do DeepL: {}", resposta.status()));
     }
 
-    let corpo: DeepLResponse = resposta.json().await.map_err(|e| e.to_string())?;
-    corpo.translations.first()
-        .map(|t| t.text.clone())
-        .ok_or_else(|| "Nenhuma tradução retornada".to_string())
+    let corpo = resposta.text().await.map_err(|e| format!("Falha ao ler resposta do DeepL: {e}"))?;
+    extrair_traducao(&corpo)
 }
 ```
 
-> **Nota:** contas **Free** do DeepL usam o endpoint `api-free.deepl.com`; contas **Pro** usam `api.deepl.com`. Deixe isso configurável, ou detecte pelo formato da chave (chaves free terminam em `:fx`).
+Erros comuns: chave inválida (`403`), limite de caracteres excedido (`456`), texto vazio.
 
-Trate erros comuns: chave inválida (`403`), limite de caracteres excedido (`456`), texto vazio. Mostre essas mensagens de forma amigável na interface, não como texto técnico cru.
+### 8.2. Microsoft Azure Translator
+
+1. No [portal do Azure](https://portal.azure.com), crie um recurso **Translator** (Cognitive Services). O tier **F0 (gratuito)** cobre 2 milhões de caracteres/mês.
+2. Na página do recurso, em "Keys and Endpoint", copie uma das chaves e a **região** (ex: `brazilsouth`) — o Azure Translator exige os dois, diferente do DeepL que só usa a chave.
+
+`src-tauri/src/traducao/azure.rs`:
+
+```rust
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize)]
+struct AzureRequestItem {
+    #[serde(rename = "Text")]
+    text: String,
+}
+
+#[derive(Deserialize)]
+struct AzureResponseItem {
+    translations: Vec<Traducao>,
+}
+
+#[derive(Deserialize)]
+struct Traducao {
+    text: String,
+}
+
+fn montar_url(idioma_destino: &str) -> String {
+    format!("https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to={idioma_destino}")
+}
+
+fn extrair_traducao(corpo_json: &str) -> Result<String, String> {
+    let resposta: Vec<AzureResponseItem> = serde_json::from_str(corpo_json)
+        .map_err(|e| format!("Resposta inesperada do Azure Translator: {e}"))?;
+
+    resposta.first()
+        .and_then(|item| item.translations.first())
+        .map(|t| t.text.clone())
+        .ok_or_else(|| "Nenhuma tradução retornada pelo Azure Translator".to_string())
+}
+
+pub async fn traduzir(texto: &str, idioma_destino: &str, api_key: &str, regiao: &str) -> Result<String, String> {
+    let cliente = reqwest::Client::new();
+    let resposta = cliente
+        .post(montar_url(idioma_destino))
+        .header("Ocp-Apim-Subscription-Key", api_key)
+        .header("Ocp-Apim-Subscription-Region", regiao)
+        .header("Content-Type", "application/json")
+        .json(&vec![AzureRequestItem { text: texto.to_string() }])
+        .send()
+        .await
+        .map_err(|e| format!("Falha ao conectar com o Azure Translator: {e}"))?;
+
+    if !resposta.status().is_success() {
+        return Err(format!("Erro da API do Azure Translator: {}", resposta.status()));
+    }
+
+    let corpo = resposta.text().await.map_err(|e| format!("Falha ao ler resposta do Azure Translator: {e}"))?;
+    extrair_traducao(&corpo)
+}
+```
+
+Repare que a API do Azure espera um **array** de objetos (`[{"Text": "..."}]`) tanto no request quanto na resposta, diferente do DeepL — por isso `extrair_traducao` aqui indexa `resposta.first()` antes de `.translations`.
+
+### 8.3. O dispatcher
+
+`src-tauri/src/traducao/mod.rs` decide qual provedor usar e traduz o idioma de destino para o formato que cada API espera (o DeepL usa `"PT-BR"`; o Azure usa `"pt"`):
+
+```rust
+mod azure;
+mod deepl;
+
+pub enum ConfiguracaoProvedor {
+    DeepL { api_key: String },
+    AzureTranslator { api_key: String, regiao: String },
+}
+
+impl ConfiguracaoProvedor {
+    fn idioma_destino_padrao(&self) -> &'static str {
+        match self {
+            ConfiguracaoProvedor::DeepL { .. } => "PT-BR",
+            ConfiguracaoProvedor::AzureTranslator { .. } => "pt",
+        }
+    }
+}
+
+pub async fn traduzir(config: &ConfiguracaoProvedor, texto: &str) -> Result<String, String> {
+    let idioma = config.idioma_destino_padrao();
+    match config {
+        ConfiguracaoProvedor::DeepL { api_key } => deepl::traduzir(texto, idioma, api_key).await,
+        ConfiguracaoProvedor::AzureTranslator { api_key, regiao } =>
+            azure::traduzir(texto, idioma, api_key, regiao).await,
+    }
+}
+```
+
+Até a Fase 5 (tela de Configurações), a escolha do provedor e as credenciais vêm de variáveis de ambiente lidas em runtime — **nunca commitadas**:
+
+```rust
+pub fn configuracao_do_ambiente() -> Result<ConfiguracaoProvedor, String> {
+    let provedor = std::env::var("TRANSLATION_PROVIDER").unwrap_or_else(|_| "deepl".to_string());
+    match provedor.to_lowercase().as_str() {
+        "azure" => Ok(ConfiguracaoProvedor::AzureTranslator {
+            api_key: std::env::var("AZURE_TRANSLATOR_KEY").map_err(|_| "AZURE_TRANSLATOR_KEY não definida".to_string())?,
+            regiao: std::env::var("AZURE_TRANSLATOR_REGION").map_err(|_| "AZURE_TRANSLATOR_REGION não definida".to_string())?,
+        }),
+        "deepl" => Ok(ConfiguracaoProvedor::DeepL {
+            api_key: std::env::var("DEEPL_API_KEY").map_err(|_| "DEEPL_API_KEY não definida".to_string())?,
+        }),
+        outro => Err(format!("Provedor de tradução desconhecido: '{outro}'. Use 'deepl' ou 'azure'.")),
+    }
+}
+```
+
+No PowerShell, antes de rodar `npm run tauri dev`:
+
+```powershell
+$env:TRANSLATION_PROVIDER = "azure"
+$env:AZURE_TRANSLATOR_KEY = "sua-chave-aqui"
+$env:AZURE_TRANSLATOR_REGION = "brazilsouth"
+```
+
+**Adicionando um terceiro provedor no futuro:** crie `traducao/novo_provedor.rs` com uma `pub async fn traduzir(texto, idioma, ...)`, adicione uma variante no enum `ConfiguracaoProvedor`, e um braço no `match` de `traduzir()` e de `idioma_destino_padrao()`. O resto do app (captura, UI, histórico) não muda nada.
 
 ---
 
@@ -782,7 +926,7 @@ Boa parte do código (toda a lógica de tradução, histórico, interface) é re
 
 Ideias para depois que a versão inicial estiver funcionando (não fazem parte do escopo original, mas são evoluções naturais):
 
-- Suporte a múltiplos serviços de tradução (Google Translate, Microsoft Translator) com fallback automático se um estiver fora do ar.
+- Mais um provedor de tradução (ex: Google Translate) seguindo o mesmo padrão de `traducao/` (§8.3), com fallback automático se um estiver fora do ar.
 - Detecção automática do idioma de origem (a própria API do DeepL suporta isso).
 - Atalhos diferentes por idioma de destino (ex: um atalho para traduzir para inglês, outro para português).
 - Exportar o histórico (CSV/JSON).

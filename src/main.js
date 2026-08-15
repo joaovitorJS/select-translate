@@ -15,4 +15,11 @@ window.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     greet();
   });
+
+  // Temporário da Fase 2 — a Fase 3 substitui isso por uma aba de
+  // Tradução de verdade. Por enquanto só mostra o resultado num alert.
+  window.__TAURI__.event.listen("nova-traducao", (evento) => {
+    const { original, traduzido } = evento.payload;
+    alert(`Original:\n${original}\n\nTradução:\n${traduzido}`);
+  });
 });

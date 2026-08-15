@@ -1,6 +1,6 @@
 use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 use std::{thread, time::Duration};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
 use crate::traducao;
@@ -53,18 +53,14 @@ fn simular_copiar() -> Result<(), String> {
 /// Dispara pelo atalho global: captura o texto selecionado em
 /// qualquer app (via clipboard) e envia para tradução.
 pub fn capturar_e_traduzir(app: AppHandle) {
-    let leitura_original = app.clipboard().read_text();
-    println!("[select-translate] [debug] Clipboard antes: {leitura_original:?}");
-    let clipboard_original = leitura_original.unwrap_or_default();
+    let clipboard_original = app.clipboard().read_text().unwrap_or_default();
 
     if let Err(erro) = simular_copiar() {
         println!("[select-translate] Falha ao simular Ctrl+C: {erro}");
         return;
     }
 
-    let leitura_capturada = app.clipboard().read_text();
-    println!("[select-translate] [debug] Clipboard depois: {leitura_capturada:?}");
-    let texto_capturado = leitura_capturada.unwrap_or_default();
+    let texto_capturado = app.clipboard().read_text().unwrap_or_default();
 
     if !houve_novo_texto(&clipboard_original, &texto_capturado) {
         println!("[select-translate] Nenhum texto novo selecionado.");
@@ -89,6 +85,11 @@ pub fn capturar_e_traduzir(app: AppHandle) {
                     "nova-traducao",
                     serde_json::json!({ "original": texto_capturado, "traduzido": traduzido }),
                 );
+
+                if let Some(janela) = app.get_webview_window("main") {
+                    let _ = janela.show();
+                    let _ = janela.set_focus();
+                }
             }
             Err(erro) => println!("[select-translate] Erro ao traduzir: {erro}"),
         }

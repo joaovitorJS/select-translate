@@ -1,25 +1,34 @@
-const { invoke } = window.__TAURI__.core;
+const { listen } = window.__TAURI__.event;
 
-let greetInputEl;
-let greetMsgEl;
+function mostrarAba(nome) {
+  document.querySelectorAll("[data-aba]").forEach((botao) => {
+    botao.classList.toggle("ativa", botao.dataset.aba === nome);
+  });
+  document.querySelectorAll(".painel").forEach((painel) => {
+    painel.classList.toggle("oculto", painel.id !== `aba-${nome}`);
+  });
+}
 
-async function greet() {
-  // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-  greetMsgEl.textContent = await invoke("greet", { name: greetInputEl.value });
+function mostrarTraducao(original, traduzido) {
+  const elementoOriginal = document.getElementById("texto-original");
+  const elementoTraduzido = document.getElementById("texto-traduzido");
+
+  elementoOriginal.textContent = original;
+  elementoOriginal.classList.remove("texto-vazio");
+
+  elementoTraduzido.textContent = traduzido;
+  elementoTraduzido.classList.remove("texto-vazio");
+
+  mostrarAba("traducao");
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    greet();
+  document.querySelectorAll("[data-aba]").forEach((botao) => {
+    botao.addEventListener("click", () => mostrarAba(botao.dataset.aba));
   });
 
-  // Temporário da Fase 2 — a Fase 3 substitui isso por uma aba de
-  // Tradução de verdade. Por enquanto só mostra o resultado num alert.
-  window.__TAURI__.event.listen("nova-traducao", (evento) => {
+  listen("nova-traducao", (evento) => {
     const { original, traduzido } = evento.payload;
-    alert(`Original:\n${original}\n\nTradução:\n${traduzido}`);
+    mostrarTraducao(original, traduzido);
   });
 });

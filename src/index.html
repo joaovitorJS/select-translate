@@ -1,39 +1,38 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-br">
   <head>
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
+    <title>Select Translate</title>
     <script type="module" src="/main.js" defer></script>
   </head>
 
   <body>
-    <main class="container">
-      <h1>Welcome to Tauri</h1>
+    <nav class="abas">
+      <button type="button" data-aba="traducao" class="ativa">Tradução</button>
+      <button type="button" data-aba="historico">Histórico</button>
+      <button type="button" data-aba="config">Configurações</button>
+    </nav>
 
-      <div class="row">
-        <a href="https://tauri.app" target="_blank">
-          <img src="/assets/tauri.svg" class="logo tauri" alt="Tauri logo" />
-        </a>
-        <a
-          href="https://developer.mozilla.org/en-US/docs/Web/JavaScript"
-          target="_blank"
-        >
-          <img
-            src="/assets/javascript.svg"
-            class="logo vanilla"
-            alt="JavaScript logo"
-          />
-        </a>
-      </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
+    <main>
+      <section id="aba-traducao" class="painel">
+        <h2>Texto original</h2>
+        <p id="texto-original" class="texto-vazio">
+          Selecione um texto em qualquer programa e pressione Ctrl+Alt+T.
+        </p>
 
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
-      </form>
-      <p id="greet-msg"></p>
+        <h2>Tradução</h2>
+        <p id="texto-traduzido" class="texto-vazio">A tradução aparece aqui.</p>
+      </section>
+
+      <section id="aba-historico" class="painel oculto">
+        <p class="texto-vazio">O histórico de traduções chega na Fase 4.</p>
+      </section>
+
+      <section id="aba-config" class="painel oculto">
+        <p class="texto-vazio">A tela de configurações chega na Fase 5.</p>
+      </section>
     </main>
   </body>
 </html>

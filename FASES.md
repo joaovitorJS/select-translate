@@ -78,11 +78,17 @@ Objetivo: provar que o núcleo funciona — selecionar texto em qualquer app, ap
 
 Objetivo: substituir os placeholders da Fase 2 por uma interface de verdade.
 
-- [ ] Layout com as três abas implementado (HTML/CSS)
-- [ ] Evento `nova-traducao` emitido pelo Rust e escutado pelo JS
-- [ ] Aba "Tradução" mostra texto original e traduzido lado a lado
-- [ ] Janela é trazida para frente automaticamente após uma tradução
-- [ ] Abas "Histórico" e "Configurações" existem na tela (ainda vazias/sem função — só o esqueleto visual)
+- [x] Layout com as três abas implementado (HTML/CSS)
+- [x] Evento `nova-traducao` emitido pelo Rust e escutado pelo JS
+- [x] Aba "Tradução" mostra texto original e traduzido lado a lado
+- [x] Janela é trazida para frente automaticamente após uma tradução
+- [x] Abas "Histórico" e "Configurações" existem na tela (ainda vazias/sem função — só o esqueleto visual)
+
+**Critério de pronto:** ✅ Validado em 2026-08-15 — testado com um texto longo/multi-linha real (trecho de um livro técnico), capturado e traduzido corretamente, aparecendo formatado na aba Tradução, com a janela vindo para frente sozinha.
+
+**Observações:**
+- O `greet` (command de demonstração do template Tauri) e os assets `tauri.svg`/`javascript.svg` foram removidos — não tinham mais uso depois que a interface real substituiu a página de exemplo do scaffold.
+- Sem testes unitários de JS nesta fase: a lógica adicionada em `main.js` é só alternância declarativa de abas e escrita de texto no DOM (sem parsing, formatação ou regra de negócio não-trivial), o que se encaixa na exceção do `CLAUDE.md` para UI puramente declarativa.
 
 **Critério de pronto:** repetir o teste da Fase 2, mas agora o resultado aparece formatado na aba Tradução da janela do app, não em `console.log`.
 

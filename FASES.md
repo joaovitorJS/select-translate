@@ -121,14 +121,23 @@ Objetivo: toda tradução feita fica salva e consultável, mesmo depois de fecha
 
 Objetivo: remover os valores fixos da Fase 2 (atalho fixo, credenciais por variável de ambiente) e tornar tudo configurável pelo usuário — **este é o fim do MVP**.
 
-- [ ] Plugin `tauri-plugin-store` instalado
-- [ ] Tela de configurações funcional: campo de atalho, idioma de destino, **seletor de provedor de tradução** (DeepL / Azure Translator) com os campos de credencial correspondentes (API key para DeepL; API key + região para Azure)
-- [ ] Salvar configurações persiste entre reinícios do app
-- [ ] Trocar o atalho na tela realmente re-registra o atalho global (chamando o command `registrar_atalho`)
-- [ ] Erro de atalho em conflito é exibido de forma amigável (não trava o app)
-- [ ] Credenciais deixam de vir de variável de ambiente — passam a vir do `store` configurado pela tela
+- [x] Plugin `tauri-plugin-store` instalado
+- [x] Tela de configurações funcional: campo de atalho, idioma de destino, **seletor de provedor de tradução** (DeepL / Azure Translator) com os campos de credencial correspondentes (API key para DeepL; API key + região para Azure)
+- [x] Salvar configurações persiste entre reinícios do app
+- [x] Trocar o atalho na tela realmente re-registra o atalho global (chamando o command `registrar_atalho`)
+- [x] Erro de atalho em conflito é exibido de forma amigável (não trava o app) — implementado (try/catch no `main.js` + `Result` propagado do Rust sem panic) mas **não testado empiricamente** com um conflito real, por ser difícil de reproduzir de propósito; revisar na Fase 10.
+- [x] Credenciais deixam de vir de variável de ambiente — passam a vir do `store` configurado pela tela
 
-**Critério de pronto:** apagar toda referência a variável de ambiente/atalho fixo do código; configurar tudo pela tela (incluindo trocar de provedor); reiniciar o app; confirmar que as configurações continuam aplicadas.
+**Critério de pronto:** ✅ Validado em 2026-08-15 — configurado tudo pela tela (atalho, idioma, provedor DeepL, chave), salvo, `Ctrl+Alt+T` funcionando; app fechado e reaberto **sem nenhuma variável de ambiente**, atalho e configurações continuaram aplicados, tradução funcionando normalmente.
+
+> ✅ **MVP completo.** Fases 0 a 5 concluídas — o app já é usável no dia a dia via `npm run tauri dev`.
+
+**Observações:**
+- Mesma pegadinha do `tauri-plugin-sql` na Fase 4, agora com o `tauri-plugin-store`: `set`/`get`/`save` exigem um `rid` de uma store já carregada via `plugin:store|load` (que retorna um resource id, não só confirma um caminho como o `sql`). `src/config.js` guarda essa Promise de `load` em `ridCarregado` e reusa, no mesmo padrão do `historico.js`.
+- `app.store(path)` do lado Rust (via `tauri_plugin_store::StoreExt`) é **síncrono** e compartilha o mesmo estado em memória que o frontend usa via `plugin:store|*` — não precisou de nenhuma ponte extra para o backend ler credenciais/atalho/idioma salvos pela tela.
+- Erro de compilação real (não o falso-positivo do PowerShell): `tauri_plugin_global_shortcut::Result<T>` é um type alias **privado** do crate — precisa usar `Result<T, tauri_plugin_global_shortcut::Error>` explicitamente na assinatura de funções próprias.
+- O idioma de destino agora é uma lista canônica pequena (`pt-br`, `pt-pt`, `en`, `es`, `fr`, `de`, `it`) mapeada para o código específico de cada provedor em `traducao/mod.rs`; adicionar um idioma novo é só uma linha ali e uma linha equivalente em `src/config.js`.
+- Os pacotes npm `@tauri-apps/plugin-store` (e antes `@tauri-apps/plugin-sql`) foram instalados só temporariamente para inspecionar o `dist-js` e confirmar os nomes exatos dos commands/parâmetros, depois desinstalados — o projeto não depende de nenhum dos dois em tempo de execução, só chama `invoke` diretamente (decisão da Fase 4, mantida por não termos bundler).
 
 > ✅ **Ao final da Fase 5, você tem um MVP completo e usável no dia a dia**, mesmo rodando via `npm run tauri dev`. As fases seguintes são refinamentos de experiência (segundo plano, modo automático) e distribuição (instalador).
 

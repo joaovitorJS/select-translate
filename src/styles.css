@@ -112,6 +112,67 @@ h2:first-child {
   font-weight: 500;
 }
 
+#form-config {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  max-width: 26em;
+}
+
+#form-config label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+#form-config input,
+#form-config select {
+  padding: 0.5em 0.6em;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 1em;
+  font-family: inherit;
+  background-color: #ffffff;
+  color: inherit;
+}
+
+.campos-provedor {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+.campos-provedor.oculto {
+  display: none;
+}
+
+#form-config button {
+  align-self: flex-start;
+  padding: 0.6em 1.4em;
+  border-radius: 6px;
+  border: none;
+  background-color: #396cd8;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+#form-config button:hover {
+  background-color: #2f5bb8;
+}
+
+#config-mensagem.erro {
+  color: #c0392b;
+  font-style: normal;
+}
+
+#config-mensagem.sucesso {
+  color: #2e7d32;
+  font-style: normal;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color: #f6f6f6;
@@ -145,5 +206,12 @@ h2:first-child {
 
   .texto-vazio {
     color: #888;
+  }
+
+  #form-config input,
+  #form-config select {
+    background-color: #0f0f0f98;
+    border-color: #3f3f3f;
+    color: #f6f6f6;
   }
 }

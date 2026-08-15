@@ -70,15 +70,15 @@ pub fn capturar_e_traduzir(app: AppHandle) {
     println!("[select-translate] Texto capturado: {texto_capturado}");
 
     tauri::async_runtime::spawn(async move {
-        let config = match traducao::configuracao_do_ambiente() {
-            Ok(config) => config,
+        let (config, idioma) = match traducao::configuracao_do_store(&app) {
+            Ok(resultado) => resultado,
             Err(erro) => {
                 println!("[select-translate] {erro}");
                 return;
             }
         };
 
-        match traducao::traduzir(&config, &texto_capturado).await {
+        match traducao::traduzir(&config, &texto_capturado, &idioma).await {
             Ok(traduzido) => {
                 println!("[select-translate] Tradução: {traduzido}");
                 let _ = app.emit(
@@ -86,7 +86,7 @@ pub fn capturar_e_traduzir(app: AppHandle) {
                     serde_json::json!({
                         "original": texto_capturado,
                         "traduzido": traduzido,
-                        "idioma": config.idioma_destino_padrao(),
+                        "idioma": idioma,
                     }),
                 );
 

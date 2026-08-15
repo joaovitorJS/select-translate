@@ -31,7 +31,46 @@
       </section>
 
       <section id="aba-config" class="painel oculto">
-        <p class="texto-vazio">A tela de configurações chega na Fase 5.</p>
+        <form id="form-config">
+          <label>
+            Atalho global
+            <input id="input-atalho" type="text" placeholder="CommandOrControl+Alt+T" />
+          </label>
+
+          <label>
+            Idioma de destino
+            <select id="select-idioma"></select>
+          </label>
+
+          <label>
+            Provedor de tradução
+            <select id="select-provedor">
+              <option value="deepl">DeepL</option>
+              <option value="azure">Microsoft Azure Translator</option>
+            </select>
+          </label>
+
+          <div id="campos-deepl" class="campos-provedor">
+            <label>
+              Chave da API (DeepL)
+              <input id="input-deepl-key" type="password" autocomplete="off" />
+            </label>
+          </div>
+
+          <div id="campos-azure" class="campos-provedor oculto">
+            <label>
+              Chave da API (Azure Translator)
+              <input id="input-azure-key" type="password" autocomplete="off" />
+            </label>
+            <label>
+              Região (ex: brazilsouth)
+              <input id="input-azure-regiao" type="text" autocomplete="off" />
+            </label>
+          </div>
+
+          <button type="submit">Salvar</button>
+          <p id="config-mensagem" class="texto-vazio"></p>
+        </form>
       </section>
     </main>
   </body>

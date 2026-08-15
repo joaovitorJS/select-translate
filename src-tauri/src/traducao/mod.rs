@@ -12,7 +12,7 @@ pub enum ConfiguracaoProvedor {
 impl ConfiguracaoProvedor {
     /// Código do idioma de destino no formato esperado por cada provedor.
     /// Fixo em português do Brasil por enquanto — vira configurável na Fase 5.
-    fn idioma_destino_padrao(&self) -> &'static str {
+    pub(crate) fn idioma_destino_padrao(&self) -> &'static str {
         match self {
             ConfiguracaoProvedor::DeepL { .. } => "PT-BR",
             ConfiguracaoProvedor::AzureTranslator { .. } => "pt",

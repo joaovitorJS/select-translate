@@ -99,13 +99,20 @@ Objetivo: substituir os placeholders da Fase 2 por uma interface de verdade.
 
 Objetivo: toda tradução feita fica salva e consultável, mesmo depois de fechar e abrir o app de novo.
 
-- [ ] Plugin `tauri-plugin-sql` instalado e configurado
-- [ ] Migração cria a tabela `historico` na primeira execução
-- [ ] Cada tradução bem-sucedida é gravada no banco
-- [ ] Aba "Histórico" lista as traduções salvas (mais recente primeiro)
-- [ ] Fechar e reabrir o app preserva o histórico
+- [x] Plugin `tauri-plugin-sql` instalado e configurado
+- [x] Migração cria a tabela `historico` na primeira execução
+- [x] Cada tradução bem-sucedida é gravada no banco
+- [x] Aba "Histórico" lista as traduções salvas (mais recente primeiro)
+- [x] Fechar e reabrir o app preserva o histórico
 
-**Critério de pronto:** fazer 3 traduções, fechar o app completamente, reabrir, e ver as 3 no histórico.
+**Critério de pronto:** ✅ Validado em 2026-08-15 — 3 traduções feitas, app fechado (janela fechada = processo encerrado, já que a Fase 7 ainda não implementou "fechar = esconder"), reaberto, e as 3 traduções continuavam na aba Histórico.
+
+**Observações:**
+- **`execute`/`select` do `tauri-plugin-sql` não conectam ao banco sob demanda** — é preciso chamar `plugin:sql|load` explicitamente antes (mesmo usando o "caminho preguiçoso" documentado como `Database.get()` no pacote oficial). Sem isso, o erro é `database sqlite:historico.db not loaded`. Implementado em `src/historico.js` como uma função `garantirBancoCarregado()` que faz `load` uma vez (guardando a Promise, não só um booleano, para não disparar `load` duas vezes em chamadas concorrentes) antes de qualquer `execute`/`select`.
+- **`sql:default` não inclui a permissão de escrita** — precisa declarar `sql:allow-load`, `sql:allow-execute` e `sql:allow-select` explicitamente em `capabilities/default.json`, senão o erro (`sql.execute not allowed`) só aparece no console do DevTools do webview, nunca no terminal onde roda o processo Rust — reforça o alerta do `GUIA.md §13` sobre falhas silenciosas de permissão.
+- Como não existe bundler (projeto vanilla, sem Vite — decisão da Fase 1), não dava para `import Database from '@tauri-apps/plugin-sql'` direto (é um pacote npm, sem um jeito de resolver o import no navegador sem um bundler). Em vez de adicionar um bundler só por causa disso, `src/historico.js` chama `window.__TAURI__.core.invoke("plugin:sql|execute"/"plugin:sql|select"/"plugin:sql|load", ...)` diretamente — os mesmos commands que o pacote oficial usa por baixo dos panos. O pacote `@tauri-apps/plugin-sql` foi instalado e depois desinstalado do `package.json` por não ser necessário.
+- Corrigido um risco de XSS local: o texto original/traduzido vem do clipboard do usuário (pode ter sido copiado de uma página web não confiável). `renderizarHistorico` em `main.js` monta os elementos via `textContent`/DOM em vez de interpolar strings em `innerHTML`, evitando que HTML/JS embutido no texto copiado seja executado dentro do app.
+- Testes JS: primeira vez que o projeto tem lógica de frontend não-trivial (`formatarDataHistorico`), então foi adicionado `node --test` (test runner nativo do Node, sem dependência nova) como `npm test`, cobrindo data válida, inválida e string vazia.
 
 ---
 

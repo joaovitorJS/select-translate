@@ -83,7 +83,11 @@ pub fn capturar_e_traduzir(app: AppHandle) {
                 println!("[select-translate] Tradução: {traduzido}");
                 let _ = app.emit(
                     "nova-traducao",
-                    serde_json::json!({ "original": texto_capturado, "traduzido": traduzido }),
+                    serde_json::json!({
+                        "original": texto_capturado,
+                        "traduzido": traduzido,
+                        "idioma": config.idioma_destino_padrao(),
+                    }),
                 );
 
                 if let Some(janela) = app.get_webview_window("main") {

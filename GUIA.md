@@ -823,9 +823,11 @@ Exponha um toggle na tela de configurações para o usuário ativar/desativar is
 
 ## 13. Permissions/capabilities do Tauri v2
 
-O Tauri v2 mudou o modelo de segurança: por padrão, **nada é permitido** — cada plugin que a janela usa precisa ser explicitamente listado em `src-tauri/capabilities/default.json`. Esquecer isso é a causa mais comum de "meu código está certo mas não funciona" — a chamada falha **silenciosamente** no frontend.
+O Tauri v2 mudou o modelo de segurança: por padrão, **nada é permitido** — cada *command de plugin chamado pelo frontend* precisa ser explicitamente listado em `src-tauri/capabilities/default.json`. Esquecer isso é a causa mais comum de "meu código está certo mas não funciona" — a chamada falha **silenciosamente** no frontend.
 
-Exemplo de `capabilities/default.json` cobrindo tudo que usamos neste guia:
+**Ponto importante (só descoberto na prática, na Fase 8 deste projeto):** essa permissão protege a ponte de IPC **frontend → backend**, isto é, só entra em jogo quando o JavaScript chama `invoke("plugin:xxx|yyy")`. Se o seu código Rust usa a extension trait de um plugin diretamente (ex: `app.clipboard()...` do `tauri-plugin-clipboard-manager`, ou `app.global_shortcut()...` do `tauri-plugin-global-shortcut`) e o frontend **nunca** invoca aquele plugin diretamente, você não precisa da permissão dele nas capabilities — só dos plugins cujos commands o `invoke()` do frontend realmente chama (no nosso caso, `sql` e `store`; `clipboard-manager` e `global-shortcut` continuam registrados como plugin no `.plugin()`, só não aparecem nas capabilities). Vale a pena revisar isso periodicamente (a Fase 8 do `FASES.md` é dedicada a essa auditoria) — não custa nada ter uma permissão sobrando, mas também não serve pra nada além de aumentar a superfície de IPC exposta ao frontend.
+
+Exemplo de `capabilities/default.json` deste projeto, já depois dessa auditoria — note que só lista os plugins de fato invocados via `invoke()` no frontend:
 
 ```json
 {
@@ -835,17 +837,20 @@ Exemplo de `capabilities/default.json` cobrindo tudo que usamos neste guia:
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "clipboard-manager:default",
-    "global-shortcut:allow-register",
-    "global-shortcut:allow-unregister",
     "sql:default",
+    "sql:allow-load",
+    "sql:allow-execute",
+    "sql:allow-select",
     "store:default",
-    "autostart:default"
+    "store:allow-load",
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-save"
   ]
 }
 ```
 
-**Checklist ao adicionar um novo plugin:** (1) `cargo add`, (2) registrar no `.plugin()` do `main.rs`, (3) adicionar a permissão correspondente aqui. Os três passos são obrigatórios — pular qualquer um deles quebra silenciosamente.
+**Checklist ao adicionar um novo plugin:** (1) `cargo add`, (2) registrar no `.plugin()` do `main.rs`, (3) se (e só se) o **frontend** for chamar `invoke("plugin:nome|comando")` diretamente, adicionar a permissão correspondente aqui — teste sempre, porque os nomes exatos de permissão (`allow-execute`, `allow-select` etc.) nem sempre estão cobertos por `plugin:default`, como aconteceu com `sql`/`store` neste projeto (ver Fases 4 e 5 do `FASES.md`).
 
 ---
 

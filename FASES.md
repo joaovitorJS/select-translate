@@ -188,11 +188,16 @@ Objetivo: o app se comporta como um utilitário de fundo de verdade, não como u
 
 Objetivo: revisão dedicada de segurança/configuração antes de empacotar — não é uma feature nova, é uma checagem.
 
-- [ ] `capabilities/default.json` revisado contra a lista de plugins realmente usados
-- [ ] Cada funcionalidade (atalho, clipboard, sql, store, autostart) testada isoladamente para confirmar que não há falha silenciosa de permissão
-- [ ] Nenhuma API key ou segredo commitado no repositório
+- [x] `capabilities/default.json` revisado contra a lista de plugins realmente usados
+- [x] Cada funcionalidade (atalho, clipboard, sql, store, autostart) testada isoladamente para confirmar que não há falha silenciosa de permissão
+- [x] Nenhuma API key ou segredo commitado no repositório
 
-**Critério de pronto:** rodar o app do zero (perfil de usuário limpo, se possível) e confirmar que nenhuma funcionalidade falha silenciosamente por falta de permissão.
+**Critério de pronto:** ✅ Validado em 2026-08-15 — depois de reduzir as permissões, testado atalho global, modo automático, histórico e salvar configurações; tudo continuou funcionando. Buscado em todo o histórico do git (`git log -p --all`) por padrões de chave de API — nada encontrado (só um placeholder de exemplo no GUIA.md).
+
+**Observações:**
+- Achado real da auditoria: `clipboard-manager:default` e `global-shortcut:allow-register`/`allow-unregister` estavam nas capabilities desde as Fases 2/4, mas **nunca foram necessários** — todo uso de clipboard/atalho global acontece só do lado Rust (via `ClipboardExt`/`GlobalShortcutExt`, chamado diretamente em `captura.rs`/`lib.rs`), nunca via `invoke("plugin:clipboard-manager|...")`/`invoke("plugin:global-shortcut|...")` do frontend. O sistema de permissions do Tauri só protege a ponte de IPC frontend→backend para commands de **plugin**; código Rust que usa a extension trait diretamente não passa por ali. Removidas as duas entradas.
+- `tauri-plugin-opener` (do template da Fase 1) nunca foi usado em lugar nenhum — nem no Rust, nem no frontend (não há `<a target="_blank">` na UI atual). Removido por completo: dependência do `Cargo.toml`, registro do plugin em `lib.rs`, e a permissão `opener:default` das capabilities.
+- Capabilities finais: `core:default` + só `sql:*` e `store:*` (as únicas que o frontend de fato invoca via `plugin:sql|...`/`plugin:store|...`).
 
 ---
 

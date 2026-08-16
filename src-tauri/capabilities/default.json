@@ -5,10 +5,6 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "opener:default",
-    "clipboard-manager:default",
-    "global-shortcut:allow-register",
-    "global-shortcut:allow-unregister",
     "sql:default",
     "sql:allow-load",
     "sql:allow-execute",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "select-translate",
+  "productName": "Select Translate",
   "version": "0.1.0",
   "identifier": "com.joaov.select-translate",
   "build": {
@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "select-translate",
+        "title": "Select Translate",
         "width": 800,
         "height": 600
       }

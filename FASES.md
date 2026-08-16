@@ -333,6 +333,18 @@ Descoberta ao investigar o pedido: as credenciais de DeepL **e** Azure já ficav
 
 ---
 
+## Melhoria — Ícone e título personalizados
+*(fora da sequência numerada — pedido direto do usuário; a Fase 9 tinha mantido o logo padrão do Tauri por decisão explícita do usuário na época)*
+
+- [x] Ícone próprio (seta + balões de fala azuis) gerado em todos os tamanhos via `npm run tauri icon`, a partir de uma imagem fornecida pelo usuário
+- [x] `productName` e o título da janela em `tauri.conf.json` trocados de `select-translate` para `Select Translate`
+
+**Observações:**
+- A imagem original enviada pelo usuário tinha o texto "Select Translate" escrito embaixo do símbolo — recortada (via `System.Drawing` no PowerShell, sem precisar instalar nenhuma ferramenta nova) pra usar só a parte do símbolo, já que texto em um ícone fica ilegível nos tamanhos pequenos (barra de tarefas, bandeja).
+- `identifier` (`com.joaov.select-translate`) foi mantido igual de propósito — mudar isso trocaria a pasta de dados do app (`%APPDATA%\com.joaov.select-translate\`), perdendo o acesso às configurações e ao histórico já salvos.
+
+---
+
 ## Resumo visual
 
 ```

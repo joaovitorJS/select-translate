@@ -6,6 +6,7 @@ import {
 import {
   IDIOMAS,
   lerConfig,
+  resolverTema,
   salvarConfig,
   validarConfigFormulario,
 } from "./config.js";
@@ -22,6 +23,32 @@ function mostrarAba(nome) {
   });
 }
 
+// ---------------------------------------------------------------------
+// Tema (claro/escuro/automático)
+// ---------------------------------------------------------------------
+
+const consultaTemaEscuro = window.matchMedia("(prefers-color-scheme: dark)");
+
+function aplicarTema(preferencia) {
+  const resolvido = resolverTema(preferencia, consultaTemaEscuro.matches);
+  document.documentElement.dataset.theme = resolvido;
+}
+
+async function carregarTemaNaTela() {
+  const preferencia = await lerConfig("tema", "automatico");
+  document.getElementById("select-tema").value = preferencia;
+  aplicarTema(preferencia);
+}
+
+async function alternarTema(evento) {
+  await salvarConfig("tema", evento.target.value);
+  aplicarTema(evento.target.value);
+}
+
+// ---------------------------------------------------------------------
+// Aba Tradução
+// ---------------------------------------------------------------------
+
 function mostrarTraducao(original, traduzido) {
   const elementoOriginal = document.getElementById("texto-original");
   const elementoTraduzido = document.getElementById("texto-traduzido");
@@ -32,7 +59,54 @@ function mostrarTraducao(original, traduzido) {
   elementoTraduzido.textContent = traduzido;
   elementoTraduzido.classList.remove("texto-vazio");
 
+  esconderCarregandoTraducao();
+  esconderErroTraducao();
   mostrarAba("traducao");
+}
+
+function mostrarCarregandoTraducao(original) {
+  document.getElementById("traducao-status").classList.remove("oculto");
+  esconderErroTraducao();
+
+  const elementoOriginal = document.getElementById("texto-original");
+  elementoOriginal.textContent = original;
+  elementoOriginal.classList.remove("texto-vazio");
+
+  mostrarAba("traducao");
+}
+
+function esconderCarregandoTraducao() {
+  document.getElementById("traducao-status").classList.add("oculto");
+}
+
+function mostrarErroTraducao(mensagem) {
+  esconderCarregandoTraducao();
+  const elemento = document.getElementById("traducao-erro");
+  elemento.textContent = mensagem;
+  elemento.classList.remove("oculto");
+}
+
+function esconderErroTraducao() {
+  document.getElementById("traducao-erro").classList.add("oculto");
+}
+
+// ---------------------------------------------------------------------
+// Aba Histórico
+// ---------------------------------------------------------------------
+
+function criarBlocoHistorico(rotulo, texto, classe) {
+  const bloco = document.createElement("div");
+  bloco.className = `historico-bloco ${classe}`;
+
+  const label = document.createElement("span");
+  label.className = "historico-rotulo";
+  label.textContent = rotulo;
+
+  const paragrafo = document.createElement("p");
+  paragrafo.textContent = texto;
+
+  bloco.append(label, paragrafo);
+  return bloco;
 }
 
 function criarItemHistorico(linha) {
@@ -41,13 +115,8 @@ function criarItemHistorico(linha) {
   const data = document.createElement("time");
   data.textContent = formatarDataHistorico(linha.criado_em);
 
-  const original = document.createElement("p");
-  original.className = "historico-original";
-  original.textContent = linha.texto_original;
-
-  const traduzido = document.createElement("p");
-  traduzido.className = "historico-traduzido";
-  traduzido.textContent = linha.texto_traduzido;
+  const original = criarBlocoHistorico("Original", linha.texto_original, "historico-original");
+  const traduzido = criarBlocoHistorico("Tradução", linha.texto_traduzido, "historico-traduzido");
 
   item.append(data, original, traduzido);
   return item;
@@ -78,6 +147,10 @@ async function atualizarHistorico() {
   renderizarHistorico(linhas);
 }
 
+// ---------------------------------------------------------------------
+// Aba Configurações
+// ---------------------------------------------------------------------
+
 function popularSelectIdiomas() {
   const select = document.getElementById("select-idioma");
   select.replaceChildren(
@@ -98,7 +171,7 @@ function alternarCamposProvedor(provedor) {
 function mostrarMensagemConfig(texto, tipo) {
   const elemento = document.getElementById("config-mensagem");
   elemento.textContent = texto;
-  elemento.className = tipo;
+  elemento.className = `mensagem ${tipo}`;
 }
 
 async function carregarConfigNaTela() {
@@ -183,12 +256,21 @@ async function salvarConfigDaTela(evento) {
   mostrarMensagemConfig("Configurações salvas.", "sucesso");
 }
 
+// ---------------------------------------------------------------------
+
 window.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-aba]").forEach((botao) => {
     botao.addEventListener("click", () => mostrarAba(botao.dataset.aba));
   });
 
   atualizarHistorico();
+
+  carregarTemaNaTela();
+  document.getElementById("select-tema").addEventListener("change", alternarTema);
+  consultaTemaEscuro.addEventListener("change", async () => {
+    const preferencia = await lerConfig("tema", "automatico");
+    if (preferencia === "automatico") aplicarTema(preferencia);
+  });
 
   popularSelectIdiomas();
   carregarConfigNaTela();
@@ -200,6 +282,14 @@ window.addEventListener("DOMContentLoaded", () => {
     .getElementById("input-modo-automatico")
     .addEventListener("change", alternarModoAutomatico);
   document.getElementById("input-autostart").addEventListener("change", alternarAutostart);
+
+  listen("traducao-iniciada", (evento) => {
+    mostrarCarregandoTraducao(evento.payload.original);
+  });
+
+  listen("traducao-erro", (evento) => {
+    mostrarErroTraducao(evento.payload.erro);
+  });
 
   listen("nova-traducao", async (evento) => {
     const { original, traduzido, idioma } = evento.payload;

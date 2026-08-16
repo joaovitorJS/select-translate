@@ -253,7 +253,27 @@ Fora do escopo imediato — só iniciar depois que o app estiver estável e em u
 ## Fase 12 — (Futuro) Melhorias
 *(GUIA.md §17)*
 
-Backlog de ideias, sem compromisso de prazo: mais provedores de tradução (Google Translate, Microsoft Translator já resolvido na Fase 2/5 como Azure Translator, LibreTranslate self-hosted etc.), fallback automático entre provedores se um estiver fora do ar, detecção automática de idioma, atalhos por idioma de destino, exportação de histórico, tema claro/escuro, leitura em voz alta.
+Backlog de ideias, sem compromisso de prazo: mais provedores de tradução (Google Translate, Microsoft Translator já resolvido na Fase 2/5 como Azure Translator, LibreTranslate self-hosted etc.), fallback automático entre provedores se um estiver fora do ar, detecção automática de idioma, atalhos por idioma de destino, exportação de histórico, ~~tema claro/escuro~~ (feito fora de ordem, ver "Melhoria — Tema claro/escuro e redesign visual" abaixo), leitura em voz alta.
+
+---
+
+## Melhoria — Tema claro/escuro e redesign visual
+*(fora da sequência numerada — puxado do backlog da Fase 12 a pedido do usuário)*
+
+Objetivo: melhorar o visual do app com tema claro/escuro/automático, usando uma paleta de cores específica (Benjamin Moore: Blue `#243973` → Scandinavian `#4F4F8D` → Mystical `#674C87` → Twilight `#9C4B81` → Hot `#BD4380`), aplicando princípios de design da skill externa `taste-skill` (https://www.tasteskill.dev/, instalada via `npx skills add Leonxlnx/taste-skill` em `.agents/skills/`).
+
+- [x] Instalado `taste-skill` no projeto (13 skills, `.agents/skills/`) — precisou instalar `git` no Windows primeiro (`spawn git ENOENT`)
+- [x] Tokens de tema (claro/escuro) em `styles.css` usando a paleta fornecida — acento sólido (Twilight) para elementos interativos, degradê completo reservado para indicador de aba ativa, botão primário e pontos de carregamento
+- [x] Seletor de tema (Automático/Claro/Escuro) na tela de Configurações, persistido, com atualização ao vivo se o tema do Windows mudar enquanto "Automático" está selecionado
+- [x] Fonte trocada para a nativa do Windows (Segoe UI Variable) em vez do stack genérico anterior
+- [x] Estados que faltavam (apontados pela skill de redesign): indicador de "traduzindo…" (pontinhos pulsando, cores da paleta) via novo evento `traducao-iniciada`; mensagem de erro inline na aba Tradução via novo evento `traducao-erro` (antes, erro de tradução só aparecia no console)
+- [x] Consistência de raio (10px em tudo), sombras tingidas com a paleta em vez de preto genérico, estados de hover/active táteis em botões e itens do histórico
+- [x] Separação visual mais clara entre texto original e traduzido no Histórico (rótulos + borda lateral colorida no traduzido) — ajuste pedido pelo usuário depois da primeira versão
+
+**Observações:**
+- A skill principal (`design-taste-frontend`) é voltada a landing pages/portfólios — o próprio texto dela diz "not multi-step product UI", que é exatamente o nosso caso (app utilitário com abas/formulários). Não fazia sentido aplicar as regras dela ao pé da letra (heros, marquees, GSAP scroll). Em vez disso, usei a skill `redesign-existing-projects` (mais genérica, funciona com CSS vanilla) como guia principal: troca de fonte, paleta com um acento só, sombras tingidas, estados de hover/active/loading/erro que faltavam.
+- Novos eventos Rust (`traducao-iniciada`, `traducao-erro`) tornam visível na UI algo que antes só existia no console (`println!`) — melhoria real de UX, não só estética.
+- Testado manualmente: troca de tema (claro/escuro/automático), indicador de carregando durante tradução, cores da paleta no indicador de aba e botão Salvar — confirmado pelo usuário ("ficou bom"). O ajuste de separação do histórico foi commitado sem uma segunda rodada de confirmação visual explícita (usuário pediu para seguir direto para commit/push).
 
 ---
 

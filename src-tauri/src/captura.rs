@@ -118,14 +118,17 @@ pub fn iniciar_monitoramento_automatico(app: AppHandle) {
 }
 
 /// Compartilhado pelos dois modos de captura: chama o provedor de
-/// tradução configurado e notifica a UI (evento + trazer janela pra
-/// frente) quando a tradução termina.
+/// tradução configurado e notifica a UI (eventos de início/erro/sucesso
+/// + trazer janela pra frente) durante o processo.
 fn traduzir_e_notificar(app: AppHandle, texto: String) {
+    let _ = app.emit("traducao-iniciada", serde_json::json!({ "original": texto }));
+
     tauri::async_runtime::spawn(async move {
         let (config, idioma) = match traducao::configuracao_do_store(&app) {
             Ok(resultado) => resultado,
             Err(erro) => {
                 println!("[select-translate] {erro}");
+                let _ = app.emit("traducao-erro", serde_json::json!({ "erro": erro }));
                 return;
             }
         };
@@ -147,7 +150,10 @@ fn traduzir_e_notificar(app: AppHandle, texto: String) {
                     let _ = janela.set_focus();
                 }
             }
-            Err(erro) => println!("[select-translate] Erro ao traduzir: {erro}"),
+            Err(erro) => {
+                println!("[select-translate] Erro ao traduzir: {erro}");
+                let _ = app.emit("traducao-erro", serde_json::json!({ "erro": erro }));
+            }
         }
     });
 }

@@ -9,79 +9,97 @@
   </head>
 
   <body>
-    <nav class="abas">
-      <button type="button" data-aba="traducao" class="ativa">Tradução</button>
-      <button type="button" data-aba="historico">Histórico</button>
-      <button type="button" data-aba="config">Configurações</button>
-    </nav>
+    <div class="app-shell">
+      <nav class="abas" aria-label="Seções do aplicativo">
+        <button type="button" data-aba="traducao" class="ativa">Tradução</button>
+        <button type="button" data-aba="historico">Histórico</button>
+        <button type="button" data-aba="config">Configurações</button>
+      </nav>
 
-    <main>
-      <section id="aba-traducao" class="painel">
-        <h2>Texto original</h2>
-        <p id="texto-original" class="texto-vazio">
-          Selecione um texto em qualquer programa e pressione Ctrl+Alt+T.
-        </p>
+      <main>
+        <section id="aba-traducao" class="painel">
+          <p id="traducao-erro" class="mensagem erro oculto" role="alert"></p>
 
-        <h2>Tradução</h2>
-        <p id="texto-traduzido" class="texto-vazio">A tradução aparece aqui.</p>
-      </section>
+          <h2>Texto original</h2>
+          <p id="texto-original" class="bloco-texto texto-vazio">
+            Selecione um texto em qualquer programa e pressione o atalho global.
+          </p>
 
-      <section id="aba-historico" class="painel oculto">
-        <ul id="lista-historico"></ul>
-      </section>
+          <h2>
+            Tradução
+            <span id="traducao-status" class="status-carregando oculto" aria-live="polite">
+              <span class="ponto"></span><span class="ponto"></span><span class="ponto"></span>
+            </span>
+          </h2>
+          <p id="texto-traduzido" class="bloco-texto texto-vazio">A tradução aparece aqui.</p>
+        </section>
 
-      <section id="aba-config" class="painel oculto">
-        <form id="form-config">
-          <label>
-            Atalho global
-            <input id="input-atalho" type="text" placeholder="CommandOrControl+Alt+T" />
-          </label>
+        <section id="aba-historico" class="painel oculto">
+          <ul id="lista-historico"></ul>
+        </section>
 
-          <label class="campo-checkbox">
-            <input type="checkbox" id="input-modo-automatico" />
-            Modo automático (traduzir sempre que copiar algo com Ctrl+C, sem precisar do atalho)
-          </label>
-
-          <label class="campo-checkbox">
-            <input type="checkbox" id="input-autostart" />
-            Iniciar automaticamente com o Windows
-          </label>
-
-          <label>
-            Idioma de destino
-            <select id="select-idioma"></select>
-          </label>
-
-          <label>
-            Provedor de tradução
-            <select id="select-provedor">
-              <option value="deepl">DeepL</option>
-              <option value="azure">Microsoft Azure Translator</option>
-            </select>
-          </label>
-
-          <div id="campos-deepl" class="campos-provedor">
+        <section id="aba-config" class="painel oculto">
+          <form id="form-config">
             <label>
-              Chave da API (DeepL)
-              <input id="input-deepl-key" type="password" autocomplete="off" />
+              Tema
+              <select id="select-tema">
+                <option value="automatico">Automático (segue o Windows)</option>
+                <option value="claro">Claro</option>
+                <option value="escuro">Escuro</option>
+              </select>
             </label>
-          </div>
 
-          <div id="campos-azure" class="campos-provedor oculto">
             <label>
-              Chave da API (Azure Translator)
-              <input id="input-azure-key" type="password" autocomplete="off" />
+              Atalho global
+              <input id="input-atalho" type="text" placeholder="CommandOrControl+Alt+T" />
             </label>
-            <label>
-              Região (ex: brazilsouth)
-              <input id="input-azure-regiao" type="text" autocomplete="off" />
-            </label>
-          </div>
 
-          <button type="submit">Salvar</button>
-          <p id="config-mensagem" class="texto-vazio"></p>
-        </form>
-      </section>
-    </main>
+            <label class="campo-checkbox">
+              <input type="checkbox" id="input-modo-automatico" />
+              Modo automático (traduzir sempre que copiar algo com Ctrl+C, sem precisar do atalho)
+            </label>
+
+            <label class="campo-checkbox">
+              <input type="checkbox" id="input-autostart" />
+              Iniciar automaticamente com o Windows
+            </label>
+
+            <label>
+              Idioma de destino
+              <select id="select-idioma"></select>
+            </label>
+
+            <label>
+              Provedor de tradução
+              <select id="select-provedor">
+                <option value="deepl">DeepL</option>
+                <option value="azure">Microsoft Azure Translator</option>
+              </select>
+            </label>
+
+            <div id="campos-deepl" class="campos-provedor">
+              <label>
+                Chave da API (DeepL)
+                <input id="input-deepl-key" type="password" autocomplete="off" />
+              </label>
+            </div>
+
+            <div id="campos-azure" class="campos-provedor oculto">
+              <label>
+                Chave da API (Azure Translator)
+                <input id="input-azure-key" type="password" autocomplete="off" />
+              </label>
+              <label>
+                Região (ex: brazilsouth)
+                <input id="input-azure-regiao" type="text" autocomplete="off" />
+              </label>
+            </div>
+
+            <button type="submit">Salvar</button>
+            <p id="config-mensagem" class="mensagem" role="status"></p>
+          </form>
+        </section>
+      </main>
+    </div>
   </body>
 </html>

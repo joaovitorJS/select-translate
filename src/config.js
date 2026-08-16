@@ -56,3 +56,15 @@ export async function lerConfig(chave, valorPadrao) {
   const [valor, existe] = await invoke("plugin:store|get", { rid, key: chave });
   return existe ? valor : valorPadrao;
 }
+
+/**
+ * Decide qual tema aplicar de fato: "automatico" segue a preferência do
+ * Windows (prefers-color-scheme); "claro"/"escuro" sempre vencem,
+ * independente do sistema.
+ */
+export function resolverTema(preferencia, sistemaPrefereEscuro) {
+  if (preferencia === "claro" || preferencia === "escuro") {
+    return preferencia;
+  }
+  return sistemaPrefereEscuro ? "escuro" : "claro";
+}

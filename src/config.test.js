@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validarConfigFormulario } from "./config.js";
+import { resolverTema, validarConfigFormulario } from "./config.js";
 
 const base = {
   atalho: "CommandOrControl+Alt+T",
@@ -39,4 +39,14 @@ test("aceita configuração válida do Azure", () => {
     azureRegiao: "brazilsouth",
   };
   assert.equal(validarConfigFormulario(valido), null);
+});
+
+test("resolverTema respeita preferência explícita, ignorando o sistema", () => {
+  assert.equal(resolverTema("claro", true), "claro");
+  assert.equal(resolverTema("escuro", false), "escuro");
+});
+
+test("resolverTema segue o sistema quando a preferência é automática", () => {
+  assert.equal(resolverTema("automatico", true), "escuro");
+  assert.equal(resolverTema("automatico", false), "claro");
 });

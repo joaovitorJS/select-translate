@@ -215,6 +215,17 @@ function alternarCamposProvedor(provedor) {
   document.getElementById("campos-azure").classList.toggle("oculto", provedor !== "azure");
 }
 
+// Qual provedor usar é uma escolha "do momento", não algo que precisa de
+// "Salvar" — aplica na hora e mantém os dois seletores (aba Tradução e
+// Configurações) sincronizados. As credenciais de cada provedor
+// continuam guardadas independentemente, então alternar não perde nada.
+async function definirProvedorAtivo(provedor) {
+  await salvarConfig("provedor", provedor);
+  document.getElementById("select-provedor-rapido").value = provedor;
+  document.getElementById("select-provedor").value = provedor;
+  alternarCamposProvedor(provedor);
+}
+
 function mostrarMensagemConfig(texto, tipo) {
   const elemento = document.getElementById("config-mensagem");
   elemento.textContent = texto;
@@ -253,6 +264,7 @@ async function carregarConfigNaTela() {
   );
   document.getElementById("select-idioma").value = idioma;
   document.getElementById("select-provedor").value = provedor;
+  document.getElementById("select-provedor-rapido").value = provedor;
   document.getElementById("input-deepl-key").value = await lerConfig("deepl_api_key", "");
   document.getElementById("input-azure-key").value = await lerConfig("azure_api_key", "");
   document.getElementById("input-azure-regiao").value = await lerConfig("azure_regiao", "");
@@ -332,8 +344,9 @@ async function salvarConfigDaTela(evento) {
     return;
   }
 
+  // "provedor" não entra aqui: definirProvedorAtivo já salva na hora,
+  // assim que o seletor muda (na aba Tradução ou aqui).
   await salvarConfig("idioma", estado.idioma);
-  await salvarConfig("provedor", estado.provedor);
   await salvarConfig("deepl_api_key", estado.deeplKey);
   await salvarConfig("azure_api_key", estado.azureKey);
   await salvarConfig("azure_regiao", estado.azureRegiao);
@@ -368,7 +381,10 @@ window.addEventListener("DOMContentLoaded", () => {
   inputAtalho.addEventListener("blur", () => inputAtalho.classList.remove("gravando"));
   document
     .getElementById("select-provedor")
-    .addEventListener("change", (evento) => alternarCamposProvedor(evento.target.value));
+    .addEventListener("change", (evento) => definirProvedorAtivo(evento.target.value));
+  document
+    .getElementById("select-provedor-rapido")
+    .addEventListener("change", (evento) => definirProvedorAtivo(evento.target.value));
   document.getElementById("form-config").addEventListener("submit", salvarConfigDaTela);
   document
     .getElementById("input-modo-automatico")

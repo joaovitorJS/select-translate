@@ -319,6 +319,20 @@ Objetivo: o campo "Atalho global" era um texto pra digitar na mão (`CommandOrCo
 
 ---
 
+## Melhoria — Seletor rápido de provedor
+*(fora da sequência numerada — pedido direto do usuário: "é possível eu ter 2 configs de tradutores e selecionar qual eu quero usar naquele momento?")*
+
+Descoberta ao investigar o pedido: as credenciais de DeepL **e** Azure já ficavam salvas independentemente desde a Fase 5 (o formulário sempre grava os dois conjuntos de campos, mesmo o que está escondido) — só faltava um jeito rápido de trocar qual está ativo sem entrar em Configurações e clicar Salvar.
+
+- [x] Seletor "Provedor" compacto no topo da aba Tradução, aplicando na hora (sem precisar de "Salvar")
+- [x] Trocar em qualquer um dos dois lugares (aba Tradução ou Configurações) sincroniza o outro
+- [x] Escolha do provedor deixa de fazer parte do payload do botão "Salvar" — vira instantânea, igual modo automático/autostart/manter no topo; só as credenciais (chaves de API) continuam exigindo "Salvar" explícito
+
+**Observações:**
+- Durante o teste desse recurso, o atalho global voltou para o padrão (`CommandOrControl+Alt+T`) — não foi um bug desta mudança; é consequência esperada de ter testado o gravador de atalho (melhoria anterior) e salvo por cima do valor customizado. Confirmado direto no `config.json` persistido.
+
+---
+
 ## Resumo visual
 
 ```

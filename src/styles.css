@@ -177,6 +177,36 @@ h2:first-of-type {
   margin-top: 0;
 }
 
+.traducao-barra {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1em;
+}
+
+.seletor-provedor {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.8em;
+  font-weight: 500;
+  color: var(--texto-suave);
+}
+
+.seletor-provedor select {
+  padding: 0.35em 0.6em;
+  border-radius: var(--raio);
+  border: 1px solid var(--borda);
+  background-color: var(--bg-elevado);
+  color: var(--texto);
+  font-family: inherit;
+  font-size: 0.95em;
+  cursor: pointer;
+}
+
+.seletor-provedor select:hover {
+  border-color: var(--acento);
+}
+
 .bloco-texto {
   white-space: pre-wrap;
   margin: 0;

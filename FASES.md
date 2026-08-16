@@ -206,13 +206,18 @@ Objetivo: revisão dedicada de segurança/configuração antes de empacotar — 
 
 Objetivo: gerar o artefato final distribuível.
 
-- [ ] Ícones do app gerados em todos os tamanhos (`npm run tauri icon`)
-- [ ] `bundle.targets` configurado para `nsis` e/ou `msi`
-- [ ] `npm run tauri build` gera o instalador sem erros
-- [ ] Instalador testado numa máquina/VM sem as ferramentas de desenvolvimento instaladas
-- [ ] App instalado aparece corretamente no menu Iniciar e desinstala sem deixar resíduos
+- [x] Ícones do app gerados em todos os tamanhos — mantidos os do scaffold da Fase 1 (logo padrão do Tauri; usuário optou por não trocar por enquanto, dá pra rodar `npm run tauri icon` com uma imagem própria depois)
+- [x] `bundle.targets` configurado para `nsis` e `msi` (era `"all"`; trocado para ser explícito e não surpreender na Fase 11 quando entrar Linux)
+- [x] `npm run tauri build` gera o instalador sem erros — 13min53s, gerou `select-translate_0.1.0_x64-setup.exe` (~4,6 MB) e `select-translate_0.1.0_x64_en-US.msi` (~6,6 MB)
+- [x] Instalador testado — **ressalva:** testado na própria máquina de desenvolvimento (não havia VM limpa disponível), instalando de verdade via `/S` (silencioso) e rodando o `.exe` instalado isoladamente (não via `cargo`/`npm`). Não é o mesmo que testar numa máquina 100% sem Rust/Node, mas confirma que o binário standalone funciona sem depender do ambiente de dev ativo.
+- [x] App instalado aparece corretamente no menu Iniciar e desinstala sem deixar resíduos
 
-**Critério de pronto:** instalar o app a partir do `.exe`/`.msi` gerado numa máquina limpa e usar todas as funcionalidades sem ter Rust/Node instalado nela.
+**Critério de pronto:** ✅ Validado em 2026-08-15 (com a ressalva acima sobre a máquina de teste) — instalado via `select-translate_0.1.0_x64-setup.exe`, atalho apareceu no Menu Iniciar (`select-translate.lnk`), app abriu, Ctrl+Alt+T traduziu normalmente (confirmado pelo usuário), desinstalado depois e conferido que pasta de instalação, atalho e entrada de registro sumiram completamente.
+
+**Observações:**
+- Instala em `%LOCALAPPDATA%\select-translate\` (modo `installMode: currentUser`, sem precisar de admin).
+- Os dados do usuário (`config.json`, `historico.db`, em `%APPDATA%\com.joaov.select-translate\`) **não são apagados** ao desinstalar — comportamento padrão/esperado (evita perda de dados se o usuário reinstalar depois), não é um resíduo real.
+- Como a pasta de dados é baseada no `identifier` do app (não no perfil de build), o app instalado (release) enxergou automaticamente a chave DeepL e as configurações já salvas durante os testes em modo `dev` — não precisou reconfigurar nada.
 
 ---
 

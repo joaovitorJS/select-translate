@@ -1,7 +1,7 @@
 [package]
 name = "select-translate"
-version = "0.1.0"
-description = "A Tauri App"
+version = "0.1.1"
+description = "Traduz o texto selecionado em qualquer programa do Windows"
 authors = ["you"]
 edition = "2021"
 

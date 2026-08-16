@@ -338,10 +338,13 @@ Descoberta ao investigar o pedido: as credenciais de DeepL **e** Azure já ficav
 
 - [x] Ícone próprio (seta + balões de fala azuis) gerado em todos os tamanhos via `npm run tauri icon`, a partir de uma imagem fornecida pelo usuário
 - [x] `productName` e o título da janela em `tauri.conf.json` trocados de `select-translate` para `Select Translate`
+- [x] Versão do app (`package.json`, `tauri.conf.json`, `Cargo.toml`) subida de `0.1.0` para `0.1.1` e descrição do `Cargo.toml` preenchida (estava com o placeholder "A Tauri App") — pra poder publicar uma release nova refletindo o ícone/título
+- [x] Release [`v0.1.1`](https://github.com/joaovitorJS/select-translate/releases/tag/v0.1.1) publicada no GitHub com os instaladores atualizados (substitui a `v0.1.0`)
 
 **Observações:**
 - A imagem original enviada pelo usuário tinha o texto "Select Translate" escrito embaixo do símbolo — recortada (via `System.Drawing` no PowerShell, sem precisar instalar nenhuma ferramenta nova) pra usar só a parte do símbolo, já que texto em um ícone fica ilegível nos tamanhos pequenos (barra de tarefas, bandeja).
 - `identifier` (`com.joaov.select-translate`) foi mantido igual de propósito — mudar isso trocaria a pasta de dados do app (`%APPDATA%\com.joaov.select-translate\`), perdendo o acesso às configurações e ao histórico já salvos.
+- Instalação do `gh` (GitHub CLI) precisou ir pelo winget (lado Windows) — `apt install gh` no WSL exigiria senha de `sudo` interativa, que não temos como fornecer por aqui. Autenticado via `gh auth login --web` (fluxo de código de dispositivo no navegador).
 
 ---
 

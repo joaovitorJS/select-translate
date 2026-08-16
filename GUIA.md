@@ -901,18 +901,18 @@ O(s) instalador(es) aparecem em `src-tauri/target/release/bundle/nsis/` e `.../m
 
 Checklist manual para validar cada requisito original antes de considerar o app pronto:
 
-- [ ] Selecionar texto no **navegador** e traduzir pelo atalho → aparece na aba Tradução.
-- [ ] Selecionar texto no **Bloco de Notas** → mesmo resultado.
-- [ ] Selecionar texto no **Word** → mesmo resultado.
-- [ ] Selecionar texto num **PDF** (visualizador comum, não protegido) → mesmo resultado.
-- [ ] Selecionar texto num **editor de código** (ex: VS Code) → mesmo resultado.
-- [ ] Selecionar texto num **app de mensagens** (ex: WhatsApp Desktop, Telegram) → mesmo resultado.
-- [ ] Trocar o atalho global nas configurações e confirmar que o novo atalho funciona (e o antigo não).
-- [ ] Ativar o **modo automático** e confirmar que copiar texto com `Ctrl+C` dispara a tradução sozinho.
-- [ ] Desativar o modo automático e confirmar que só o atalho manual funciona.
-- [ ] Fechar a janela (X) e confirmar que o app continua rodando na bandeja (ícone visível, `Ctrl+Alt+T` continua funcionando).
-- [ ] Abrir a aba **Histórico** e ver as traduções anteriores, mesmo após reiniciar o app.
-- [ ] Rodar `npm run tauri build` e instalar o `.exe`/`.msi` gerado numa máquina limpa (ou máquina virtual) para confirmar que o instalador funciona sem as ferramentas de desenvolvimento.
+- [x] Selecionar texto no **navegador** e traduzir pelo atalho → aparece na aba Tradução. *(validado nas Fases 2-4)*
+- [x] Selecionar texto no **Bloco de Notas** → mesmo resultado. *(validado nas Fases 2-4)*
+- [ ] Selecionar texto no **Word** → mesmo resultado. **Não testado** — usuário não tem Word instalado.
+- [x] Selecionar texto num **PDF** (visualizador comum, não protegido) → mesmo resultado. *(validado na Fase 10, Edge)*
+- [x] Selecionar texto num **editor de código** (ex: VS Code) → mesmo resultado. *(validado na Fase 10)*
+- [ ] Selecionar texto num **app de mensagens** (ex: WhatsApp Desktop, Telegram) → mesmo resultado. **Não testado** — usuário não tem nenhum dos dois instalado.
+- [x] Trocar o atalho global nas configurações e confirmar que o novo atalho funciona (e o antigo não). *(validado na Fase 10 — trocado para `CommandOrControl+Alt+Y`, confirmado nos logs e pelo usuário; mantido assim por escolha do usuário)*
+- [x] Ativar o **modo automático** e confirmar que copiar texto com `Ctrl+C` dispara a tradução sozinho. *(validado na Fase 6)*
+- [x] Desativar o modo automático e confirmar que só o atalho manual funciona. *(validado na Fase 6)*
+- [x] Fechar a janela (X) e confirmar que o app continua rodando na bandeja (ícone visível, o atalho continua funcionando). *(validado na Fase 7)*
+- [x] Abrir a aba **Histórico** e ver as traduções anteriores, mesmo após reiniciar o app. *(validado na Fase 4)*
+- [x] Rodar `npm run tauri build` e instalar o `.exe`/`.msi` gerado (mesma máquina de dev, sem VM limpa disponível) para confirmar que o instalador funciona standalone. *(validado na Fase 9, com a ressalva sobre a máquina de teste)*
 
 ---
 

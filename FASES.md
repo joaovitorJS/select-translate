@@ -226,10 +226,15 @@ Objetivo: gerar o artefato final distribuível.
 
 Objetivo: passar pelo checklist completo dos 7 requisitos originais antes de considerar "pronto para uso real".
 
-- [ ] Checklist completo da seção 15 do GUIA.md executado e aprovado
-- [ ] Teste em pelo menos: navegador, Bloco de Notas, Word, um PDF, um editor de código, um app de mensagens
+- [x] Checklist completo da seção 15 do GUIA.md executado — 10 de 12 itens aprovados, 2 não testados por falta de app disponível (ver observações)
+- [x] Teste em pelo menos: navegador, Bloco de Notas, ~~Word~~, um PDF, um editor de código, ~~um app de mensagens~~ — Word e app de mensagens pulados (usuário não tem nenhum instalado); todos os outros passaram
 
-**Critério de pronto:** todos os itens do checklist marcados como OK.
+**Critério de pronto:** ✅ Validado em 2026-08-15, com ressalva — todos os itens testáveis no ambiente atual passaram. Word e app de mensagens (WhatsApp/Telegram) ficam pendentes por falta de app disponível para testar, não por falha do app.
+
+**Observações:**
+- Testes novos feitos nesta fase (os demais já tinham sido validados em fases anteriores e foram reaproveitados como evidência): **PDF** (Edge, texto selecionado e traduzido), **VS Code** (comentário/código selecionado e traduzido), e **trocar o atalho global** (mudado de `CommandOrControl+Alt+T` para `CommandOrControl+Alt+Y` pela tela de Configurações — confirmado no log `Atalho global registrado: CommandOrControl+Alt+Y` seguido de uma tradução funcionando com o atalho novo).
+- Usuário optou por manter o atalho em `CommandOrControl+Alt+Y` depois do teste, em vez de voltar para o padrão.
+- **Pendência real, não urgente:** testar em Word e num app de mensagens quando/se o usuário tiver algum instalado. Como a captura funciona via clipboard (Ctrl+C simulado) e já foi validada em navegador, Bloco de Notas, PDF e VS Code — uma variedade grande de tipos de app (nativo Win32, webview, editor de texto rico, editor de código) — o risco de Word/apps de mensagens se comportarem diferente é baixo, mas não é zero (ex: Word às vezes copia RTF/HTML além de texto puro; alguns apps Electron de mensagens têm comportamento de clipboard peculiar).
 
 ---
 

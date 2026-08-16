@@ -358,11 +358,33 @@ h2:first-of-type {
 #form-config {
   display: flex;
   flex-direction: column;
-  gap: 1.1em;
-  max-width: 26em;
+  gap: 1.4em;
+  max-width: 28em;
 }
 
-#form-config label {
+.grupo-config {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1em;
+  margin: 0;
+  padding: 1.1em 1.2em 1.3em;
+  border: 1px solid var(--borda);
+  border-radius: calc(var(--raio) + 4px);
+  background-color: var(--bg-elevado);
+  box-shadow: var(--sombra);
+}
+
+.grupo-config legend {
+  padding: 0 0.4em;
+  margin-left: -0.4em;
+  font-size: 0.78em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--acento);
+}
+
+.grupo-config label {
   display: flex;
   flex-direction: column;
   gap: 0.35em;
@@ -378,7 +400,7 @@ h2:first-of-type {
   border: 1px solid var(--borda);
   font-size: 1em;
   font-family: inherit;
-  background-color: var(--bg-elevado);
+  background-color: var(--bg);
   color: var(--texto);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -398,15 +420,70 @@ h2:first-of-type {
   display: none;
 }
 
-.campo-checkbox {
+/* Switch (liga/desliga) — substitui checkbox nativo nas três opções de
+   comportamento instantâneo (modo automático, autostart, manter no topo) */
+.linha-switch {
   flex-direction: row !important;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.55em !important;
+  gap: 1em !important;
+  color: var(--texto) !important;
 }
 
-.campo-checkbox input {
-  width: auto;
-  accent-color: var(--acento);
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  width: 40px;
+  height: 22px;
+}
+
+.switch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.switch-trilho {
+  display: flex;
+  align-items: center;
+  width: 40px;
+  height: 22px;
+  padding: 2px;
+  border-radius: 999px;
+  background-color: var(--borda);
+  transition: background-color 0.2s ease;
+}
+
+.switch-bolinha {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.switch input:checked ~ .switch-trilho {
+  background: var(--degrade);
+}
+
+.switch input:checked ~ .switch-trilho .switch-bolinha {
+  transform: translateX(18px);
+}
+
+.switch input:focus-visible ~ .switch-trilho {
+  box-shadow: var(--anel-foco);
+}
+
+.config-rodape {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5em;
 }
 
 #form-config button {

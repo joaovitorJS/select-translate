@@ -183,6 +183,10 @@ async function carregarConfigNaTela() {
   document.getElementById("input-atalho").value = atalho;
   document.getElementById("input-modo-automatico").checked = modoAutomatico;
   document.getElementById("input-autostart").checked = await invoke("autostart_esta_ativo");
+  document.getElementById("input-manter-no-topo").checked = await lerConfig(
+    "manter_no_topo",
+    false,
+  );
   document.getElementById("select-idioma").value = idioma;
   document.getElementById("select-provedor").value = provedor;
   document.getElementById("input-deepl-key").value = await lerConfig("deepl_api_key", "");
@@ -211,6 +215,23 @@ async function alternarAutostart(evento) {
     await invoke("definir_autostart", { ativo: evento.target.checked });
     mostrarMensagemConfig(
       evento.target.checked ? "Vai iniciar com o Windows." : "Não inicia mais com o Windows.",
+      "sucesso",
+    );
+  } catch (erro) {
+    evento.target.checked = !evento.target.checked;
+    mostrarMensagemConfig(`Não foi possível alterar isso: ${erro}`, "erro");
+  }
+}
+
+// Mesmo padrão do autostart: aplica na janela e salva no mesmo command,
+// efeito imediato sem precisar de "Salvar".
+async function alternarManterNoTopo(evento) {
+  try {
+    await invoke("definir_manter_no_topo", { ativo: evento.target.checked });
+    mostrarMensagemConfig(
+      evento.target.checked
+        ? "A janela vai ficar sempre em cima das outras."
+        : "A janela não fica mais sempre em cima.",
       "sucesso",
     );
   } catch (erro) {
@@ -282,6 +303,9 @@ window.addEventListener("DOMContentLoaded", () => {
     .getElementById("input-modo-automatico")
     .addEventListener("change", alternarModoAutomatico);
   document.getElementById("input-autostart").addEventListener("change", alternarAutostart);
+  document
+    .getElementById("input-manter-no-topo")
+    .addEventListener("change", alternarManterNoTopo);
 
   listen("traducao-iniciada", (evento) => {
     mostrarCarregandoTraducao(evento.payload.original);

@@ -95,6 +95,24 @@ fn autostart_esta_ativo(app: AppHandle) -> Result<bool, String> {
     app.autolaunch().is_enabled().map_err(|e| e.to_string())
 }
 
+/// Liga/desliga manter a janela sempre em cima das outras (nunca ficar
+/// escondida atrás do que o usuário está usando). Aplica na janela
+/// imediatamente e salva em config.json para reaplicar na próxima
+/// abertura do app.
+#[tauri::command]
+fn definir_manter_no_topo(app: AppHandle, ativo: bool) -> Result<(), String> {
+    if let Some(janela) = app.get_webview_window("main") {
+        janela.set_always_on_top(ativo).map_err(|e| e.to_string())?;
+    }
+
+    if let Ok(store) = app.store("config.json") {
+        store.set("manter_no_topo", serde_json::json!(ativo));
+        let _ = store.save();
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -154,6 +172,15 @@ pub fn run() {
                         let _ = janela_para_esconder.hide();
                     }
                 });
+
+                let manter_no_topo_salvo = app
+                    .store("config.json")?
+                    .get("manter_no_topo")
+                    .and_then(|valor| valor.as_bool())
+                    .unwrap_or(false);
+                if manter_no_topo_salvo {
+                    let _ = janela.set_always_on_top(true);
+                }
             }
 
             Ok(())
@@ -161,7 +188,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             registrar_atalho,
             definir_autostart,
-            autostart_esta_ativo
+            autostart_esta_ativo,
+            definir_manter_no_topo
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -74,15 +74,25 @@ pub fn capturar_e_traduzir(app: AppHandle) {
     traduzir_e_notificar(app, texto_capturado);
 }
 
-/// Lê `modo_automatico` da store (`config.json`). Ausente ou de tipo
-/// inesperado conta como desligado — mais seguro do que assumir ligado.
-fn interpretar_modo_automatico(valor: Option<serde_json::Value>) -> bool {
+/// Interpreta um valor booleano opcional lido da store (`config.json`).
+/// Ausente ou de tipo inesperado conta como desligado — mais seguro do
+/// que assumir ligado. Usado por qualquer flag booleana da store
+/// (modo automático, manter atrás, etc).
+fn interpretar_booleano_store(valor: Option<serde_json::Value>) -> bool {
     valor.and_then(|v| v.as_bool()).unwrap_or(false)
 }
 
+fn flag_da_store_ativa(app: &AppHandle, chave: &str) -> bool {
+    let valor = app.store("config.json").ok().and_then(|store| store.get(chave));
+    interpretar_booleano_store(valor)
+}
+
 fn modo_automatico_ativo(app: &AppHandle) -> bool {
-    let valor = app.store("config.json").ok().and_then(|store| store.get("modo_automatico"));
-    interpretar_modo_automatico(valor)
+    flag_da_store_ativa(app, "modo_automatico")
+}
+
+fn manter_no_topo_ativo(app: &AppHandle) -> bool {
+    flag_da_store_ativa(app, "manter_no_topo")
 }
 
 /// Roda para sempre em segundo plano (uma thread própria, sem bloquear
@@ -147,7 +157,12 @@ fn traduzir_e_notificar(app: AppHandle, texto: String) {
 
                 if let Some(janela) = app.get_webview_window("main") {
                     let _ = janela.show();
-                    let _ = janela.set_focus();
+                    // Com "manter no topo" ligado, a janela já fica sempre
+                    // visível acima das outras — não precisa roubar o foco
+                    // do que o usuário está digitando a cada tradução.
+                    if !manter_no_topo_ativo(&app) {
+                        let _ = janela.set_focus();
+                    }
                 }
             }
             Err(erro) => {
@@ -179,18 +194,18 @@ mod tests {
     }
 
     #[test]
-    fn interpretar_modo_automatico_true_quando_true() {
-        assert!(interpretar_modo_automatico(Some(serde_json::json!(true))));
+    fn interpretar_booleano_store_true_quando_true() {
+        assert!(interpretar_booleano_store(Some(serde_json::json!(true))));
     }
 
     #[test]
-    fn interpretar_modo_automatico_false_quando_false() {
-        assert!(!interpretar_modo_automatico(Some(serde_json::json!(false))));
+    fn interpretar_booleano_store_false_quando_false() {
+        assert!(!interpretar_booleano_store(Some(serde_json::json!(false))));
     }
 
     #[test]
-    fn interpretar_modo_automatico_false_quando_ausente_ou_tipo_errado() {
-        assert!(!interpretar_modo_automatico(None));
-        assert!(!interpretar_modo_automatico(Some(serde_json::json!("ligado"))));
+    fn interpretar_booleano_store_false_quando_ausente_ou_tipo_errado() {
+        assert!(!interpretar_booleano_store(None));
+        assert!(!interpretar_booleano_store(Some(serde_json::json!("ligado"))));
     }
 }

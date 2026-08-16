@@ -40,63 +40,91 @@
 
         <section id="aba-config" class="painel oculto">
           <form id="form-config">
-            <label>
-              Tema
-              <select id="select-tema">
-                <option value="automatico">Automático (segue o Windows)</option>
-                <option value="claro">Claro</option>
-                <option value="escuro">Escuro</option>
-              </select>
-            </label>
-
-            <label>
-              Atalho global
-              <input id="input-atalho" type="text" placeholder="CommandOrControl+Alt+T" />
-            </label>
-
-            <label class="campo-checkbox">
-              <input type="checkbox" id="input-modo-automatico" />
-              Modo automático (traduzir sempre que copiar algo com Ctrl+C, sem precisar do atalho)
-            </label>
-
-            <label class="campo-checkbox">
-              <input type="checkbox" id="input-autostart" />
-              Iniciar automaticamente com o Windows
-            </label>
-
-            <label>
-              Idioma de destino
-              <select id="select-idioma"></select>
-            </label>
-
-            <label>
-              Provedor de tradução
-              <select id="select-provedor">
-                <option value="deepl">DeepL</option>
-                <option value="azure">Microsoft Azure Translator</option>
-              </select>
-            </label>
-
-            <div id="campos-deepl" class="campos-provedor">
+            <fieldset class="grupo-config">
+              <legend>Aparência</legend>
               <label>
-                Chave da API (DeepL)
-                <input id="input-deepl-key" type="password" autocomplete="off" />
+                Tema
+                <select id="select-tema">
+                  <option value="automatico">Automático (segue o Windows)</option>
+                  <option value="claro">Claro</option>
+                  <option value="escuro">Escuro</option>
+                </select>
               </label>
+            </fieldset>
+
+            <fieldset class="grupo-config">
+              <legend>Captura</legend>
+              <label>
+                Atalho global
+                <input id="input-atalho" type="text" placeholder="CommandOrControl+Alt+T" />
+              </label>
+
+              <label class="linha-switch">
+                <span>Modo automático — traduzir ao copiar (Ctrl+C), sem precisar do atalho</span>
+                <span class="switch">
+                  <input type="checkbox" id="input-modo-automatico" />
+                  <span class="switch-trilho"><span class="switch-bolinha"></span></span>
+                </span>
+              </label>
+            </fieldset>
+
+            <fieldset class="grupo-config">
+              <legend>Janela</legend>
+              <label class="linha-switch">
+                <span>Iniciar automaticamente com o Windows</span>
+                <span class="switch">
+                  <input type="checkbox" id="input-autostart" />
+                  <span class="switch-trilho"><span class="switch-bolinha"></span></span>
+                </span>
+              </label>
+
+              <label class="linha-switch">
+                <span>Manter sempre em cima das outras janelas</span>
+                <span class="switch">
+                  <input type="checkbox" id="input-manter-no-topo" />
+                  <span class="switch-trilho"><span class="switch-bolinha"></span></span>
+                </span>
+              </label>
+            </fieldset>
+
+            <fieldset class="grupo-config">
+              <legend>Tradução</legend>
+              <label>
+                Idioma de destino
+                <select id="select-idioma"></select>
+              </label>
+
+              <label>
+                Provedor de tradução
+                <select id="select-provedor">
+                  <option value="deepl">DeepL</option>
+                  <option value="azure">Microsoft Azure Translator</option>
+                </select>
+              </label>
+
+              <div id="campos-deepl" class="campos-provedor">
+                <label>
+                  Chave da API (DeepL)
+                  <input id="input-deepl-key" type="password" autocomplete="off" />
+                </label>
+              </div>
+
+              <div id="campos-azure" class="campos-provedor oculto">
+                <label>
+                  Chave da API (Azure Translator)
+                  <input id="input-azure-key" type="password" autocomplete="off" />
+                </label>
+                <label>
+                  Região (ex: brazilsouth)
+                  <input id="input-azure-regiao" type="text" autocomplete="off" />
+                </label>
+              </div>
+            </fieldset>
+
+            <div class="config-rodape">
+              <button type="submit">Salvar</button>
+              <p id="config-mensagem" class="mensagem" role="status"></p>
             </div>
-
-            <div id="campos-azure" class="campos-provedor oculto">
-              <label>
-                Chave da API (Azure Translator)
-                <input id="input-azure-key" type="password" autocomplete="off" />
-              </label>
-              <label>
-                Região (ex: brazilsouth)
-                <input id="input-azure-regiao" type="text" autocomplete="off" />
-              </label>
-            </div>
-
-            <button type="submit">Salvar</button>
-            <p id="config-mensagem" class="mensagem" role="status"></p>
           </form>
         </section>
       </main>

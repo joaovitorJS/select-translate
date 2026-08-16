@@ -277,6 +277,20 @@ Objetivo: melhorar o visual do app com tema claro/escuro/automático, usando uma
 
 ---
 
+## Melhoria — Manter janela sempre em cima + redesign das Configurações
+*(fora da sequência numerada — pedidos diretos do usuário)*
+
+- [x] Opção "Manter sempre em cima das outras janelas" (`set_always_on_top`, aplicado imediatamente + persistido, reaplicado na abertura do app). **Nota:** o pedido original foi por engano descrito como "ficar atrás" (`set_always_on_bottom`) — implementado, testado o build, e corrigido para "em cima" assim que o usuário avisou do erro, antes de qualquer teste manual com o comportamento errado.
+- [x] Quando "manter no topo" está ligado, a tradução automática atualiza o conteúdo sem roubar o foco do teclado (`set_focus()` só é chamado quando a opção está desligada) — reaproveita o mesmo padrão de `flag_da_store_ativa` já usado pelo modo automático (função renomeada de `interpretar_modo_automatico` para `interpretar_booleano_store`, genérica para qualquer flag booleana da store)
+- [x] Redesign da tela de Configurações: campos agrupados em seções (`<fieldset>`: Aparência, Captura, Janela, Tradução) em vez de uma lista corrida
+- [x] Checkboxes de modo automático/autostart/manter-no-topo trocados por switches (trilho + bolinha deslizante, cores do degradê quando ligado)
+
+**Observações:**
+- Erro real de build durante o desenvolvimento (não o falso-positivo do PowerShell): `LINK : fatal error LNK1104` (não conseguiu abrir o `.exe` antigo) mesmo sem nenhum processo `select-translate`/`cargo` rodando — lock transitório (provavelmente antivírus/indexador do Windows escaneando o binário recém-compilado). Resolvido só tentando de novo.
+- Testado manualmente: janela permanece visível por cima de outras ao traduzir, sem roubar foco; desligar volta ao comportamento normal.
+
+---
+
 ## Resumo visual
 
 ```

@@ -1,7 +1,12 @@
 mod captura;
 mod traducao;
 
-use tauri::AppHandle;
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconBuilder,
+    AppHandle, Manager, WindowEvent,
+};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri_plugin_store::StoreExt;
@@ -61,9 +66,43 @@ fn registrar_atalho(app: AppHandle, atalho: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Traz a janela principal para frente e dá foco a ela — usado tanto
+/// pelo menu da bandeja quanto pela segunda instância do app (via
+/// tauri-plugin-single-instance) e pelo command de autostart.
+fn mostrar_janela_principal(app: &AppHandle) {
+    if let Some(janela) = app.get_webview_window("main") {
+        let _ = janela.show();
+        let _ = janela.set_focus();
+    }
+}
+
+/// Liga/desliga iniciar o app junto com o Windows. O estado "de
+/// verdade" vive no registro do Windows (via tauri-plugin-autostart),
+/// não em config.json — por isso o frontend consulta
+/// `autostart_esta_ativo` em vez de guardar sua própria cópia.
+#[tauri::command]
+fn definir_autostart(app: AppHandle, ativo: bool) -> Result<(), String> {
+    let gerenciador = app.autolaunch();
+    if ativo {
+        gerenciador.enable().map_err(|e| e.to_string())
+    } else {
+        gerenciador.disable().map_err(|e| e.to_string())
+    }
+}
+
+#[tauri::command]
+fn autostart_esta_ativo(app: AppHandle) -> Result<bool, String> {
+    app.autolaunch().is_enabled().map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Precisa ser o primeiro plugin registrado (exigência do
+        // próprio tauri-plugin-single-instance).
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            mostrar_janela_principal(app);
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -73,6 +112,7 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .setup(|app| {
             let atalho_salvo = app
                 .store("config.json")?
@@ -89,9 +129,41 @@ pub fn run() {
 
             captura::iniciar_monitoramento_automatico(app.handle().clone());
 
+            // Ícone na bandeja com menu "Abrir"/"Sair" — o app continua
+            // rodando em segundo plano mesmo com a janela fechada.
+            let abrir = MenuItem::with_id(app, "abrir", "Abrir", true, None::<&str>)?;
+            let sair = MenuItem::with_id(app, "sair", "Sair", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&abrir, &sair])?;
+
+            TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "abrir" => mostrar_janela_principal(app),
+                    "sair" => app.exit(0),
+                    _ => {}
+                })
+                .build(app)?;
+
+            // Fechar a janela (X) esconde em vez de encerrar o processo
+            // — o app continua vivo na bandeja.
+            if let Some(janela) = app.get_webview_window("main") {
+                let janela_para_esconder = janela.clone();
+                janela.on_window_event(move |event| {
+                    if let WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        let _ = janela_para_esconder.hide();
+                    }
+                });
+            }
+
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![registrar_atalho])
+        .invoke_handler(tauri::generate_handler![
+            registrar_atalho,
+            definir_autostart,
+            autostart_esta_ativo
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

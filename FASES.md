@@ -168,12 +168,18 @@ Objetivo: adicionar o segundo modo de captura, com toggle nas configurações.
 
 Objetivo: o app se comporta como um utilitário de fundo de verdade, não como uma janela comum.
 
-- [ ] Ícone na bandeja com menu "Abrir" / "Sair"
-- [ ] Fechar a janela (X) esconde em vez de encerrar o processo
-- [ ] `tauri-plugin-single-instance` impede abrir o app duas vezes
-- [ ] `tauri-plugin-autostart` implementado, com toggle nas configurações para iniciar com o Windows
+- [x] Ícone na bandeja com menu "Abrir" / "Sair"
+- [x] Fechar a janela (X) esconde em vez de encerrar o processo
+- [x] `tauri-plugin-single-instance` impede abrir o app duas vezes
+- [x] `tauri-plugin-autostart` implementado, com toggle nas configurações para iniciar com o Windows
 
-**Critério de pronto:** fechar a janela, confirmar que o ícone continua na bandeja e que o atalho global continua funcionando; tentar abrir o app de novo pelo atalho de desktop e confirmar que só a janela existente é trazida para frente (não abre um segundo processo).
+**Critério de pronto:** ✅ Validado em 2026-08-15 — ícone na bandeja com menu Abrir/Sair funcionando; fechar a janela mantém o app rodando (confirmado com o usuário); tentativa de abrir uma segunda instância (`Start-Process` no mesmo `.exe`) não criou um segundo processo — só o original continuou rodando; checkbox de autostart testado na tela de Configurações.
+
+**Observações:**
+- `tauri-plugin-single-instance` **precisa ser o primeiro `.plugin(...)` registrado** no builder — é uma exigência do próprio plugin, não uma preferência de estilo.
+- A feature `tray-icon` do crate `tauri` **não vem habilitada por padrão** — precisou adicionar `features = ["tray-icon"]` no `Cargo.toml` (erro de compilação real: `unresolved import 'tauri::tray'`, com a mensagem apontando exatamente qual feature faltava).
+- O estado do autostart não é guardado em `config.json` — o `tauri-plugin-autostart` mexe direto no registro do Windows (`HKCU\...\Run`), então essa é a fonte de verdade; o frontend consulta o estado atual via o command `autostart_esta_ativo` em vez de duplicar essa informação na store.
+- Conferido manualmente que o teste do autostart não deixou nenhuma entrada residual em `HKCU:\Software\Microsoft\Windows\CurrentVersion\Run` apontando para o build de desenvolvimento.
 
 ---
 

@@ -109,6 +109,7 @@ async function carregarConfigNaTela() {
 
   document.getElementById("input-atalho").value = atalho;
   document.getElementById("input-modo-automatico").checked = modoAutomatico;
+  document.getElementById("input-autostart").checked = await invoke("autostart_esta_ativo");
   document.getElementById("select-idioma").value = idioma;
   document.getElementById("select-provedor").value = provedor;
   document.getElementById("input-deepl-key").value = await lerConfig("deepl_api_key", "");
@@ -127,6 +128,22 @@ async function alternarModoAutomatico(evento) {
     evento.target.checked ? "Modo automático ligado." : "Modo automático desligado.",
     "sucesso",
   );
+}
+
+// Igual ao modo automático: efeito imediato ao mudar, sem precisar de
+// "Salvar". O estado de verdade fica no registro do Windows (via
+// tauri-plugin-autostart), não em config.json.
+async function alternarAutostart(evento) {
+  try {
+    await invoke("definir_autostart", { ativo: evento.target.checked });
+    mostrarMensagemConfig(
+      evento.target.checked ? "Vai iniciar com o Windows." : "Não inicia mais com o Windows.",
+      "sucesso",
+    );
+  } catch (erro) {
+    evento.target.checked = !evento.target.checked;
+    mostrarMensagemConfig(`Não foi possível alterar isso: ${erro}`, "erro");
+  }
 }
 
 async function salvarConfigDaTela(evento) {
@@ -182,6 +199,7 @@ window.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("input-modo-automatico")
     .addEventListener("change", alternarModoAutomatico);
+  document.getElementById("input-autostart").addEventListener("change", alternarAutostart);
 
   listen("nova-traducao", async (evento) => {
     const { original, traduzido, idioma } = evento.payload;

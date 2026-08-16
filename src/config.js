@@ -68,3 +68,71 @@ export function resolverTema(preferencia, sistemaPrefereEscuro) {
   }
   return sistemaPrefereEscuro ? "escuro" : "claro";
 }
+
+// Teclas que já têm um nome amigável diferente do `event.key` cru.
+const NOMES_TECLA_ESPECIAL = {
+  " ": "Space",
+  Escape: "Escape",
+  Enter: "Enter",
+  Tab: "Tab",
+  Backspace: "Backspace",
+  Delete: "Delete",
+  ArrowUp: "Up",
+  ArrowDown: "Down",
+  ArrowLeft: "Left",
+  ArrowRight: "Right",
+  Home: "Home",
+  End: "End",
+  PageUp: "PageUp",
+  PageDown: "PageDown",
+};
+
+const MODIFICADORES_PUROS = new Set(["Control", "Alt", "Shift", "Meta"]);
+
+/**
+ * Nome da tecla no formato que o `tauri-plugin-global-shortcut` espera
+ * (ex: "T", "1", "F5", "Space"). Usa `code` (posição física, não afetada
+ * por layout de teclado) quando dá, e cai para `key` em teclas especiais.
+ */
+function nomeDaTecla({ key, code }) {
+  if (NOMES_TECLA_ESPECIAL[key]) {
+    return NOMES_TECLA_ESPECIAL[key];
+  }
+  if (/^F([1-9]|1\d|2[0-4])$/.test(key)) {
+    return key; // F1–F24
+  }
+  if (code?.startsWith("Key")) {
+    return code.slice(3); // "KeyT" -> "T"
+  }
+  if (code?.startsWith("Digit")) {
+    return code.slice(5); // "Digit1" -> "1"
+  }
+  if (key.length === 1) {
+    return key.toUpperCase();
+  }
+  return key; // melhor esforço para teclas não mapeadas explicitamente
+}
+
+/**
+ * Converte um evento de teclado (ou objeto com o mesmo formato, em
+ * testes) na string de atalho que o backend espera, tipo
+ * "CommandOrControl+Alt+T". Retorna `null` quando só um modificador foi
+ * pressionado até agora (ainda não é um atalho completo) ou quando a
+ * tecla é Escape (usada pra cancelar a gravação, não pra virar atalho).
+ */
+export function montarAtalhoDoEvento(evento) {
+  const { ctrlKey, altKey, shiftKey, metaKey, key } = evento;
+
+  if (key === "Escape" || MODIFICADORES_PUROS.has(key)) {
+    return null;
+  }
+
+  const partes = [];
+  if (ctrlKey) partes.push("CommandOrControl");
+  if (altKey) partes.push("Alt");
+  if (shiftKey) partes.push("Shift");
+  if (metaKey) partes.push("Super");
+  partes.push(nomeDaTecla(evento));
+
+  return partes.join("+");
+}

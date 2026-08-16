@@ -302,6 +302,23 @@ Objetivo: melhorar o visual do app com tema claro/escuro/automático, usando uma
 
 ---
 
+## Melhoria — Gravador de atalho (em vez de digitar manualmente)
+*(fora da sequência numerada — pedido direto do usuário: "não é possível eu apertar no teclado e ele automaticamente trocar")*
+
+Objetivo: o campo "Atalho global" era um texto pra digitar na mão (`CommandOrControl+Alt+T`) — confuso pra quem não conhece essa sintaxe. Virou um gravador: clica no campo, pressiona a combinação, ele preenche sozinho (mesmo padrão do editor de atalhos do VS Code/Discord).
+
+- [x] Campo `readonly` (não dá pra digitar direto) que captura `keydown` enquanto focado e monta a string de atalho a partir dos modificadores + tecla pressionada
+- [x] `Esc` cancela a gravação sem alterar o valor atual
+- [x] Só um modificador pressionado (ex: só Ctrl) ainda não conta como atalho completo — espera a tecla principal
+- [x] Teclas de função (F1–F24) são aceitas sozinhas, sem exigir modificador
+- [x] Indicação visual de "gravando" (borda + fundo na cor de acento) enquanto o campo está focado
+
+**Observações:**
+- Lógica de montagem do atalho (`montarAtalhoDoEvento`) extraída como função pura em `config.js`, testável sem precisar de um `KeyboardEvent` de verdade (só um objeto com o mesmo formato) — 6 testes novos cobrindo modificadores combinados, teclas de função, `code` vs `key` (pra não depender de layout de teclado em dígitos), e os casos de retornar `null`.
+- Rede de segurança: como a validação final de verdade já acontece no Rust (`registrar_atalho` rejeita combinações inválidas/em conflito com uma mensagem amigável, desde a Fase 5), o mapeamento de nomes de tecla no frontend não precisa ser 100% exaustivo — teclas exóticas não mapeadas caem num "melhor esforço" e, se o Rust rejeitar, o usuário já vê o erro na tela.
+
+---
+
 ## Resumo visual
 
 ```

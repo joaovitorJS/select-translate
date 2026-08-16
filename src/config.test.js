@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolverTema, validarConfigFormulario } from "./config.js";
+import { montarAtalhoDoEvento, resolverTema, validarConfigFormulario } from "./config.js";
 
 const base = {
   atalho: "CommandOrControl+Alt+T",
@@ -49,4 +49,43 @@ test("resolverTema respeita preferência explícita, ignorando o sistema", () =>
 test("resolverTema segue o sistema quando a preferência é automática", () => {
   assert.equal(resolverTema("automatico", true), "escuro");
   assert.equal(resolverTema("automatico", false), "claro");
+});
+
+const semModificador = { ctrlKey: false, altKey: false, shiftKey: false, metaKey: false };
+
+test("montarAtalhoDoEvento monta Ctrl+Alt+T a partir do evento", () => {
+  const evento = { ...semModificador, ctrlKey: true, altKey: true, key: "t", code: "KeyT" };
+  assert.equal(montarAtalhoDoEvento(evento), "CommandOrControl+Alt+T");
+});
+
+test("montarAtalhoDoEvento usa 'code' pra ignorar layout de teclado em dígitos", () => {
+  const evento = { ...semModificador, ctrlKey: true, key: "1", code: "Digit1" };
+  assert.equal(montarAtalhoDoEvento(evento), "CommandOrControl+1");
+});
+
+test("montarAtalhoDoEvento reconhece teclas de função sem precisar de modificador", () => {
+  const evento = { ...semModificador, key: "F9", code: "F9" };
+  assert.equal(montarAtalhoDoEvento(evento), "F9");
+});
+
+test("montarAtalhoDoEvento retorna null enquanto só um modificador está pressionado", () => {
+  const evento = { ...semModificador, ctrlKey: true, key: "Control", code: "ControlLeft" };
+  assert.equal(montarAtalhoDoEvento(evento), null);
+});
+
+test("montarAtalhoDoEvento retorna null para Escape (cancela a gravação)", () => {
+  const evento = { ...semModificador, key: "Escape", code: "Escape" };
+  assert.equal(montarAtalhoDoEvento(evento), null);
+});
+
+test("montarAtalhoDoEvento junta vários modificadores na ordem esperada", () => {
+  const evento = {
+    ctrlKey: true,
+    altKey: true,
+    shiftKey: true,
+    metaKey: false,
+    key: "y",
+    code: "KeyY",
+  };
+  assert.equal(montarAtalhoDoEvento(evento), "CommandOrControl+Alt+Shift+Y");
 });

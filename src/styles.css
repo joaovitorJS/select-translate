@@ -470,6 +470,26 @@ h2:first-of-type {
   border-color: color-mix(in srgb, var(--acento) 40%, var(--borda));
 }
 
+#input-atalho {
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+#input-atalho.gravando {
+  cursor: text;
+  border-color: var(--acento);
+  box-shadow: var(--anel-foco);
+  background-color: color-mix(in srgb, var(--acento) 8%, var(--bg));
+}
+
+.dica-campo {
+  font-size: 0.78em;
+  font-weight: 400;
+  color: var(--texto-vazio);
+}
+
 .campos-provedor {
   display: flex;
   flex-direction: column;

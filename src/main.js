@@ -8,6 +8,7 @@ import {
 import {
   IDIOMAS,
   lerConfig,
+  montarAtalhoDoEvento,
   resolverTema,
   salvarConfig,
   validarConfigFormulario,
@@ -220,6 +221,23 @@ function mostrarMensagemConfig(texto, tipo) {
   elemento.className = `mensagem ${tipo}`;
 }
 
+// O campo de atalho é `readonly` (não dá pra digitar direto) — em vez
+// disso, ele "grava" a combinação de teclas pressionada enquanto está
+// focado, parecido com o editor de atalhos do VS Code/Discord.
+function capturarTeclaDoAtalho(evento) {
+  evento.preventDefault();
+
+  if (evento.key === "Escape") {
+    evento.target.blur();
+    return;
+  }
+
+  const atalho = montarAtalhoDoEvento(evento);
+  if (atalho) {
+    evento.target.value = atalho;
+  }
+}
+
 async function carregarConfigNaTela() {
   const atalho = await lerConfig("atalho", "CommandOrControl+Alt+T");
   const idioma = await lerConfig("idioma", "pt-br");
@@ -344,6 +362,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
   popularSelectIdiomas();
   carregarConfigNaTela();
+  const inputAtalho = document.getElementById("input-atalho");
+  inputAtalho.addEventListener("keydown", capturarTeclaDoAtalho);
+  inputAtalho.addEventListener("focus", () => inputAtalho.classList.add("gravando"));
+  inputAtalho.addEventListener("blur", () => inputAtalho.classList.remove("gravando"));
   document
     .getElementById("select-provedor")
     .addEventListener("change", (evento) => alternarCamposProvedor(evento.target.value));

@@ -105,8 +105,10 @@ async function carregarConfigNaTela() {
   const atalho = await lerConfig("atalho", "CommandOrControl+Alt+T");
   const idioma = await lerConfig("idioma", "pt-br");
   const provedor = await lerConfig("provedor", "deepl");
+  const modoAutomatico = await lerConfig("modo_automatico", false);
 
   document.getElementById("input-atalho").value = atalho;
+  document.getElementById("input-modo-automatico").checked = modoAutomatico;
   document.getElementById("select-idioma").value = idioma;
   document.getElementById("select-provedor").value = provedor;
   document.getElementById("input-deepl-key").value = await lerConfig("deepl_api_key", "");
@@ -114,6 +116,17 @@ async function carregarConfigNaTela() {
   document.getElementById("input-azure-regiao").value = await lerConfig("azure_regiao", "");
 
   alternarCamposProvedor(provedor);
+}
+
+// Modo automático é salvo assim que o checkbox muda — diferente dos
+// outros campos, não precisa clicar em "Salvar" para ter efeito (o
+// backend confere o valor salvo a cada ~800ms).
+async function alternarModoAutomatico(evento) {
+  await salvarConfig("modo_automatico", evento.target.checked);
+  mostrarMensagemConfig(
+    evento.target.checked ? "Modo automático ligado." : "Modo automático desligado.",
+    "sucesso",
+  );
 }
 
 async function salvarConfigDaTela(evento) {
@@ -166,6 +179,9 @@ window.addEventListener("DOMContentLoaded", () => {
     .getElementById("select-provedor")
     .addEventListener("change", (evento) => alternarCamposProvedor(evento.target.value));
   document.getElementById("form-config").addEventListener("submit", salvarConfigDaTela);
+  document
+    .getElementById("input-modo-automatico")
+    .addEventListener("change", alternarModoAutomatico);
 
   listen("nova-traducao", async (evento) => {
     const { original, traduzido, idioma } = evento.payload;

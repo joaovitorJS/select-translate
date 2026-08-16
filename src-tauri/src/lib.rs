@@ -87,6 +87,8 @@ pub fn run() {
                 println!("[select-translate] Atalho global registrado: {atalho_salvo}");
             }
 
+            captura::iniciar_monitoramento_automatico(app.handle().clone());
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![registrar_atalho])

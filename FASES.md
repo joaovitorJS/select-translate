@@ -148,13 +148,18 @@ Objetivo: remover os valores fixos da Fase 2 (atalho fixo, credenciais por vari�
 
 Objetivo: adicionar o segundo modo de captura, com toggle nas configurações.
 
-- [ ] Loop de monitoramento do clipboard implementado (thread separada)
-- [ ] Flag "modo automático" lida da configuração a cada ciclo do loop
-- [ ] Checkbox na tela de Configurações liga/desliga o modo automático
-- [ ] Com o modo automático ligado, copiar qualquer texto (`Ctrl+C` normal) dispara tradução
-- [ ] Com o modo automático desligado, só o atalho manual dispara tradução
+- [x] Loop de monitoramento do clipboard implementado (thread separada)
+- [x] Flag "modo automático" lida da configuração a cada ciclo do loop
+- [x] Checkbox na tela de Configurações liga/desliga o modo automático
+- [x] Com o modo automático ligado, copiar qualquer texto (`Ctrl+C` normal) dispara tradução
+- [x] Com o modo automático desligado, só o atalho manual dispara tradução
 
-**Critério de pronto:** alternar o checkbox e confirmar visualmente que o comportamento muda imediatamente, sem precisar reiniciar o app.
+**Critério de pronto:** ✅ Validado em 2026-08-15 — checkbox ligado, `Ctrl+C` normal traduziu sozinho; checkbox desligado, parou de traduzir automaticamente, sem precisar reiniciar o app.
+
+**Observações:**
+- `capturar_e_traduzir` (atalho) e o novo loop de monitoramento (`iniciar_monitoramento_automatico`) foram unificados num único `traduzir_e_notificar(app, texto)` compartilhado — evita duplicar a lógica de "chamar o provedor configurado, emitir o evento, trazer a janela pra frente" entre os dois modos de captura.
+- O checkbox de modo automático salva sozinho no `change` (sem precisar clicar em "Salvar", diferente dos outros campos da tela) — o backend confere o valor a cada ~800ms, então o efeito é quase imediato.
+- Cuidado que valeu a pena documentar: a thread de monitoramento inicializa `ultimo_valor` com o conteúdo **atual** do clipboard ao iniciar (não com string vazia). Sem isso, a primeira checagem depois de ligar o app compararia contra `""` e traduziria de sopetão qualquer coisa que já estivesse copiada antes — um falso positivo bem confuso de depurar.
 
 ---
 

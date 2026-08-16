@@ -144,6 +144,16 @@ h2:first-child {
   gap: 1em;
 }
 
+.campo-checkbox {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5em !important;
+}
+
+.campo-checkbox input {
+  width: auto;
+}
+
 .campos-provedor.oculto {
   display: none;
 }

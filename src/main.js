@@ -1,7 +1,9 @@
 import {
   carregarHistorico,
+  excluirDoHistorico,
   formatarDataHistorico,
   inserirNoHistorico,
+  limparHistorico,
 } from "./historico.js";
 import {
   IDIOMAS,
@@ -112,13 +114,28 @@ function criarBlocoHistorico(rotulo, texto, classe) {
 function criarItemHistorico(linha) {
   const item = document.createElement("li");
 
+  const cabecalho = document.createElement("div");
+  cabecalho.className = "historico-cabecalho";
+
   const data = document.createElement("time");
   data.textContent = formatarDataHistorico(linha.criado_em);
+
+  const botaoExcluir = document.createElement("button");
+  botaoExcluir.type = "button";
+  botaoExcluir.className = "historico-excluir";
+  botaoExcluir.setAttribute("aria-label", "Excluir esta tradução do histórico");
+  botaoExcluir.textContent = "×";
+  botaoExcluir.addEventListener("click", async () => {
+    await excluirDoHistorico(linha.id);
+    await atualizarHistorico();
+  });
+
+  cabecalho.append(data, botaoExcluir);
 
   const original = criarBlocoHistorico("Original", linha.texto_original, "historico-original");
   const traduzido = criarBlocoHistorico("Tradução", linha.texto_traduzido, "historico-traduzido");
 
-  item.append(data, original, traduzido);
+  item.append(cabecalho, original, traduzido);
   return item;
 }
 
@@ -145,6 +162,35 @@ function renderizarHistorico(linhas) {
 async function atualizarHistorico() {
   const linhas = await carregarHistorico();
   renderizarHistorico(linhas);
+}
+
+// "Limpar histórico" apaga tudo (irreversível), então exige dois
+// cliques: o primeiro vira um pedido de confirmação por alguns
+// segundos, o segundo (dentro do prazo) executa de fato. Evita usar
+// window.confirm() — o app não usa diálogos nativos do navegador em
+// nenhum outro lugar.
+let limpezaPendente = null;
+
+async function alternarLimparHistorico(evento) {
+  const botao = evento.currentTarget;
+
+  if (limpezaPendente) {
+    clearTimeout(limpezaPendente);
+    limpezaPendente = null;
+    botao.textContent = "Limpar histórico";
+    botao.classList.remove("confirmando");
+    await limparHistorico();
+    await atualizarHistorico();
+    return;
+  }
+
+  botao.textContent = "Confirmar: apagar tudo?";
+  botao.classList.add("confirmando");
+  limpezaPendente = setTimeout(() => {
+    limpezaPendente = null;
+    botao.textContent = "Limpar histórico";
+    botao.classList.remove("confirmando");
+  }, 4000);
 }
 
 // ---------------------------------------------------------------------
@@ -285,6 +331,9 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   atualizarHistorico();
+  document
+    .getElementById("btn-limpar-historico")
+    .addEventListener("click", alternarLimparHistorico);
 
   carregarTemaNaTela();
   document.getElementById("select-tema").addEventListener("change", alternarTema);

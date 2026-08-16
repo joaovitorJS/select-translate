@@ -48,3 +48,23 @@ export async function carregarHistorico() {
     values: [],
   });
 }
+
+export async function excluirDoHistorico(id) {
+  const { invoke } = window.__TAURI__.core;
+  await garantirBancoCarregado();
+  await invoke("plugin:sql|execute", {
+    db: CAMINHO_BANCO,
+    query: "DELETE FROM historico WHERE id = $1",
+    values: [id],
+  });
+}
+
+export async function limparHistorico() {
+  const { invoke } = window.__TAURI__.core;
+  await garantirBancoCarregado();
+  await invoke("plugin:sql|execute", {
+    db: CAMINHO_BANCO,
+    query: "DELETE FROM historico",
+    values: [],
+  });
+}

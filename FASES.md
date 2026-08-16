@@ -291,6 +291,17 @@ Objetivo: melhorar o visual do app com tema claro/escuro/automático, usando uma
 
 ---
 
+## Melhoria — Excluir itens do histórico
+*(fora da sequência numerada — pedido direto do usuário)*
+
+- [x] Excluir uma tradução específica: botão "×" no cabeçalho de cada item (`DELETE FROM historico WHERE id = $1`), some da lista imediatamente
+- [x] Limpar o histórico inteiro: botão "Limpar histórico" acima da lista, com confirmação em dois cliques (primeiro clique vira "Confirmar: apagar tudo?" por 4s, segundo clique dentro do prazo executa) — evita `window.confirm()`, mantendo o padrão do resto do app de não usar diálogos nativos do navegador
+
+**Observações:**
+- Ação de limpar tudo é irreversível (sem lixeira/undo), por isso a confirmação em dois passos; excluir um item individual não pede confirmação (ação de menor impacto, mais parecida com desfazer um envio de e-mail do que apagar uma conta).
+
+---
+
 ## Resumo visual
 
 ```

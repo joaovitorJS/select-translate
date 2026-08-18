@@ -1,8 +1,8 @@
 [package]
 name = "select-translate"
 version = "0.1.1"
-description = "Traduz o texto selecionado em qualquer programa do Windows"
-authors = ["you"]
+description = "Traduz o texto selecionado em qualquer programa"
+authors = ["joaovitorJS"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

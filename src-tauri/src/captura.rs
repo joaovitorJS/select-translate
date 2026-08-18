@@ -15,12 +15,41 @@ pub fn houve_novo_texto(clipboard_original: &str, clipboard_capturado: &str) -> 
     !clipboard_capturado.trim().is_empty() && clipboard_capturado != clipboard_original
 }
 
-/// Código de tecla virtual do Windows (VK_C). Precisa ser `Key::Other`
-/// (tecla física de verdade), não `Key::Unicode('c')` — o modo Unicode
-/// injeta o caractere diretamente e ignora o Ctrl que está pressionado
-/// ao mesmo tempo, então o app de destino recebe só um "c" digitado
-/// em vez do atalho de copiar.
+/// Código de tecla virtual do Windows (VK_C). Só serve nesse SO: no
+/// Windows, `Key::Other(v)` manda `v` direto como Virtual-Key, então
+/// tem que ser exatamente VK_C (0x43). Precisa ser `Key::Other`, não
+/// `Key::Unicode('c')` — o modo Unicode no Windows injeta o caractere
+/// diretamente e ignora o Ctrl que está pressionado ao mesmo tempo,
+/// então o app de destino recebe só um "c" digitado em vez do atalho
+/// de copiar.
+#[cfg(target_os = "windows")]
 const VK_C: u32 = 0x43;
+
+/// Tecla enviada para simular o "C" de Ctrl+C, específica por SO
+/// (testado empiricamente na Fase 11, ao portar para Linux).
+///
+/// No Windows precisa ser `Key::Other(VK_C)` (ver comentário de
+/// `VK_C`). No Linux (e nas demais plataformas), `Key::Other(v)` vira
+/// um keysym X11/Wayland, não um Virtual-Key — e `VK_C` (`0x43`)
+/// também é, por coincidência, o keysym de "C" **maiúsculo**
+/// (`XK_C`), então usá-lo aqui fazia o enigo sintetizar Shift+C,
+/// virando Ctrl+Shift+C (um atalho diferente, não ligado a copiar na
+/// maioria dos apps) em vez de Ctrl+C — o clipboard nunca mudava e a
+/// captura falhava silenciosamente ("Nenhum texto novo selecionado").
+/// `Key::Unicode('c')` resolve para o keysym minúsculo correto sem
+/// precisar de Shift, e — diferente do Windows — não tem o problema
+/// de ignorar o Ctrl pressionado, porque no Linux tanto `Unicode`
+/// quanto `Other` passam pelo mesmo caminho de resolução de keysym.
+fn tecla_copiar() -> Key {
+    #[cfg(target_os = "windows")]
+    {
+        Key::Other(VK_C)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Key::Unicode('c')
+    }
+}
 
 fn simular_copiar() -> Result<(), String> {
     let mut enigo = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
@@ -44,7 +73,7 @@ fn simular_copiar() -> Result<(), String> {
         .key(Key::Control, Direction::Press)
         .map_err(|e| e.to_string())?;
     enigo
-        .key(Key::Other(VK_C), Direction::Click)
+        .key(tecla_copiar(), Direction::Click)
         .map_err(|e| e.to_string())?;
     enigo
         .key(Key::Control, Direction::Release)
@@ -207,5 +236,21 @@ mod tests {
     fn interpretar_booleano_store_false_quando_ausente_ou_tipo_errado() {
         assert!(!interpretar_booleano_store(None));
         assert!(!interpretar_booleano_store(Some(serde_json::json!("ligado"))));
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn tecla_copiar_usa_virtual_key_c_no_windows() {
+        assert_eq!(tecla_copiar(), Key::Other(VK_C));
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn tecla_copiar_usa_c_minusculo_fora_do_windows() {
+        // Ver comentário de `tecla_copiar`: `Key::Other(VK_C)` do Windows
+        // equivale ao keysym de "C" maiúsculo no Linux, que quebra o
+        // Ctrl+C (vira Ctrl+Shift+C). `Key::Unicode('c')` minúsculo é o
+        // que resolve pro keysym certo sem exigir Shift.
+        assert_eq!(tecla_copiar(), Key::Unicode('c'));
     }
 }

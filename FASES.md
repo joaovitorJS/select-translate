@@ -241,12 +241,19 @@ Objetivo: passar pelo checklist completo dos 7 requisitos originais antes de con
 ## Fase 11 — (Futuro) Portabilidade para Linux
 *(GUIA.md §16)*
 
-Fora do escopo imediato — só iniciar depois que o app estiver estável e em uso real no Windows.
+- [x] Ambiente de build Linux configurado (Rust via `rustup` + libs de sistema do Tauri v2 via `apt`, `cargo install tauri-cli` — ver observações)
+- [x] `enigo` validado em X11 (via XWayland) — encontrado e corrigido um bug real de portabilidade (`Key::Other(VK_C)` do Windows virava Ctrl+**Shift**+C no Linux); testado ponta a ponta com atalho global de verdade
+- [ ] `enigo` validado separadamente em Wayland **nativo** (sem XWayland) — não dá pra testar sem a feature `wayland` do enigo e um compositor com shell completo que suporte o protocolo `virtual-keyboard-unstable-v1` (a maioria não suporta, incl. GNOME); ambiente de teste disponível (WSLg) não tem shell nem app Wayland nativo à mão. Ver ressalva detalhada no GUIA.md §16.
+- [x] Bundler configurado para `deb`/`appimage` (`"targets": "all"` no `tauri.conf.json`, resolve automático por SO a partir do mesmo config) — os dois pacotes gerados e testados (`.deb` inspecionado com `dpkg-deb`, `.AppImage` rodado standalone, ambos com o atalho global funcionando de ponta a ponta)
+- [x] Ajustes de atalho global e bandeja documentados por ambiente gráfico (ver GUIA.md §16) — validado que o atalho global dispara sob X11/XWayland; bandeja registra sem erro mas não aparece em ambientes sem host de bandeja (ex: WSLg, GNOME sem extensão) — comportamento documentado, não testado num compositor com shell completo (GNOME/KDE de verdade)
 
-- [ ] Ambiente de build Linux configurado
-- [ ] `enigo` validado em X11 e, separadamente, em Wayland
-- [ ] Bundler configurado para `deb`/`appimage`
-- [ ] Ajustes de atalho global e bandeja documentados por ambiente gráfico
+**Observações:**
+- Ambiente de teste: Ubuntu 26.04 dentro do WSL2 com WSLg (`DISPLAY`/`WAYLAND_DISPLAY` ambos setados — dá X11 real via XWayland e Wayland via o compositor do WSLg), não uma máquina/VM Linux dedicada.
+- `npm run tauri build`/`dev` não funciona neste WSL porque `node_modules` é compartilhado com o lado Windows (projeto em `/mnt/c`) e só tem o binding nativo `@tauri-apps/cli-win32-*`; resolvido instalando `tauri-cli` via `cargo install` (independente do `node_modules`, não arrisca o binding usado no Windows).
+- Builds no `/mnt/c` recompilam do zero com frequência (mtimes do mount 9p não são confiáveis pro cache incremental do Cargo) — cada build local levou de 6 a 8 minutos mesmo sem mudança de código.
+- Instalação de pacotes via `apt` (libs do Tauri, `python3-tk`/`xclip`/`wl-clipboard`/`xdotool` pro ambiente de teste) precisou ser feita pelo usuário num terminal de verdade — `sudo` não aceita senha via a ponte não-interativa do Claude Code.
+- `Cargo.toml` (`description`/`authors`) tinha texto específico do Windows e um placeholder herdados da Fase 9 — corrigido junto, já que viram `Description`/`Maintainer` reais no `.deb`.
+- Teste de "captura real" foi automatizado com uma janela Tk (Python) com texto pré-selecionado via `tag_add("sel", ...)`, ativada com `xdotool windowactivate`, e o atalho global enviado com `xdotool key ctrl+alt+t` — permite validar o fluxo completo (atalho → Ctrl+C simulado → clipboard → captura) sem precisar de interação manual.
 
 ---
 

@@ -371,6 +371,23 @@ Bug: com o campo "Atalho global" focado (gravando), se a combinação **já ativ
 
 ---
 
+## Correção — `<select>` ilegível no tema escuro no Linux
+
+*(fora da sequência numerada — reportado pelo usuário via [issue #1](https://github.com/joaovitorJS/select-translate/issues/1) num teste real em Ubuntu 24.04 LTS, logo após a release v0.2.0 com suporte a Linux)*
+
+Bug: os quatro `<select>` do app (Tema, Idioma de destino, Provedor de tradução, seletor rápido de provedor) apareciam com fundo branco e texto claro quase ilegível no tema escuro — só no Linux, nunca no Windows. Causa: sem `appearance: none`, o WebKitGTK desenha `<select>` com o widget nativo do GTK, que segue o tema do sistema (claro, por padrão) em vez do `background-color`/`color` do nosso CSS — o WebView2 do Windows não tem essa restrição, por isso passou despercebido até um teste real em Linux (a Fase 11 validou build/empacotamento/captura, mas não fez uma varredura visual completa da UI).
+
+- [x] `appearance: none` (+ `-webkit-appearance: none`) nos dois grupos de `<select>` (`#form-config select`, `.seletor-provedor select`) — nosso CSS passa a controlar 100% da renderização, em vez de delegar pro widget nativo
+- [x] Seta de dropdown redesenhada via `background-image` (SVG embutido, um por tema — `--seta-select` como custom property, redefinida nos blocos de tema escuro) já que `appearance: none` remove a seta nativa
+- [x] `color-scheme: light`/`dark` adicionado em `:root` e nos blocos de tema escuro — ajuda o WebKitGTK (e qualquer outro engine) a escolher a paleta nativa certa pro que ainda não é 100% controlável via CSS (ex: scrollbar do popup de opções)
+
+**Observações:**
+- Sem teste automatizado novo: é uma correção puramente visual (CSS), sem lógica nova em JS/Rust — consistente com a diretriz do projeto de não exigir teste unitário pra UI declarativa. `npm test` (suite existente) continua passando.
+- Validado visualmente no mesmo ambiente Linux/WSLg da Fase 11: rebuild do app, troca pra tema escuro, screenshot dos quatro `<select>` (Tema, Idioma, Provedor, seletor rápido) confirmando fundo/texto/seta consistentes com o resto da UI escura.
+- Como um data URI de CSS não enxerga `var()`, a seta precisou de duas versões fixas (uma por tema) em vez de uma única que reagisse à paleta — outros ícones inline via CSS no futuro vão precisar do mesmo padrão.
+
+---
+
 ## Resumo visual
 
 ```

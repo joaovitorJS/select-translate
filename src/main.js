@@ -232,6 +232,14 @@ function mostrarMensagemConfig(texto, tipo) {
   elemento.className = `mensagem ${tipo}`;
 }
 
+// Evita a corrida entre "retomar o atalho antigo" (dispara no blur do
+// campo) e "salvar o atalho novo" (dispara no submit do formulário) —
+// as duas são chamadas assíncronas pro backend, e sem essa flag o
+// retomar poderia terminar DEPOIS do salvar e desfazer o atalho novo
+// silenciosamente. Setada no mousedown do botão Salvar, que sempre
+// dispara antes do blur (o clique tira o foco do campo primeiro).
+let salvandoConfig = false;
+
 // O campo de atalho é `readonly` (não dá pra digitar direto) — em vez
 // disso, ele "grava" a combinação de teclas pressionada enquanto está
 // focado, parecido com o editor de atalhos do VS Code/Discord.
@@ -319,39 +327,45 @@ async function alternarManterNoTopo(evento) {
 async function salvarConfigDaTela(evento) {
   evento.preventDefault();
 
-  const estado = {
-    atalho: document.getElementById("input-atalho").value.trim(),
-    idioma: document.getElementById("select-idioma").value,
-    provedor: document.getElementById("select-provedor").value,
-    deeplKey: document.getElementById("input-deepl-key").value.trim(),
-    azureKey: document.getElementById("input-azure-key").value.trim(),
-    azureRegiao: document.getElementById("input-azure-regiao").value.trim(),
-  };
-
-  const erro = validarConfigFormulario(estado);
-  if (erro) {
-    mostrarMensagemConfig(erro, "erro");
-    return;
-  }
-
   try {
-    // Salva e re-registra o atalho global no mesmo comando — se a
-    // combinação já estiver em uso por outro programa, o registro
-    // falha e a Promise rejeita, sem travar o app.
-    await invoke("registrar_atalho", { atalho: estado.atalho });
-  } catch (erroAtalho) {
-    mostrarMensagemConfig(`Não foi possível registrar esse atalho: ${erroAtalho}`, "erro");
-    return;
+    const estado = {
+      atalho: document.getElementById("input-atalho").value.trim(),
+      idioma: document.getElementById("select-idioma").value,
+      provedor: document.getElementById("select-provedor").value,
+      deeplKey: document.getElementById("input-deepl-key").value.trim(),
+      azureKey: document.getElementById("input-azure-key").value.trim(),
+      azureRegiao: document.getElementById("input-azure-regiao").value.trim(),
+    };
+
+    const erro = validarConfigFormulario(estado);
+    if (erro) {
+      mostrarMensagemConfig(erro, "erro");
+      return;
+    }
+
+    try {
+      // Salva e re-registra o atalho global no mesmo comando — se a
+      // combinação já estiver em uso por outro programa, o registro
+      // falha e a Promise rejeita, sem travar o app.
+      await invoke("registrar_atalho", { atalho: estado.atalho });
+    } catch (erroAtalho) {
+      mostrarMensagemConfig(`Não foi possível registrar esse atalho: ${erroAtalho}`, "erro");
+      return;
+    }
+
+    // "provedor" não entra aqui: definirProvedorAtivo já salva na hora,
+    // assim que o seletor muda (na aba Tradução ou aqui).
+    await salvarConfig("idioma", estado.idioma);
+    await salvarConfig("deepl_api_key", estado.deeplKey);
+    await salvarConfig("azure_api_key", estado.azureKey);
+    await salvarConfig("azure_regiao", estado.azureRegiao);
+
+    mostrarMensagemConfig("Configurações salvas.", "sucesso");
+  } finally {
+    // Libera a flag pro próximo ciclo de foco/blur do campo de atalho
+    // (ver comentário em `salvandoConfig`, lá em cima).
+    salvandoConfig = false;
   }
-
-  // "provedor" não entra aqui: definirProvedorAtivo já salva na hora,
-  // assim que o seletor muda (na aba Tradução ou aqui).
-  await salvarConfig("idioma", estado.idioma);
-  await salvarConfig("deepl_api_key", estado.deeplKey);
-  await salvarConfig("azure_api_key", estado.azureKey);
-  await salvarConfig("azure_regiao", estado.azureRegiao);
-
-  mostrarMensagemConfig("Configurações salvas.", "sucesso");
 }
 
 // ---------------------------------------------------------------------
@@ -377,8 +391,25 @@ window.addEventListener("DOMContentLoaded", () => {
   carregarConfigNaTela();
   const inputAtalho = document.getElementById("input-atalho");
   inputAtalho.addEventListener("keydown", capturarTeclaDoAtalho);
-  inputAtalho.addEventListener("focus", () => inputAtalho.classList.add("gravando"));
-  inputAtalho.addEventListener("blur", () => inputAtalho.classList.remove("gravando"));
+  inputAtalho.addEventListener("focus", () => {
+    inputAtalho.classList.add("gravando");
+    // Desliga o atalho global enquanto grava — senão, se a combinação
+    // atual disparar (ex: o usuário aperta o atalho de novo sem querer
+    // com o campo ainda focado), o Ctrl+C simulado pela captura normal
+    // cai nesse campo e vira "a nova gravação" por engano.
+    invoke("pausar_atalho_global");
+  });
+  inputAtalho.addEventListener("blur", () => {
+    inputAtalho.classList.remove("gravando");
+    if (!salvandoConfig) {
+      invoke("retomar_atalho_global");
+    }
+  });
+  document
+    .querySelector("#form-config button[type='submit']")
+    .addEventListener("mousedown", () => {
+      salvandoConfig = true;
+    });
   document
     .getElementById("select-provedor")
     .addEventListener("change", (evento) => definirProvedorAtivo(evento.target.value));

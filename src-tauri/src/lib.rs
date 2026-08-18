@@ -50,6 +50,17 @@ fn registrar_atalho_no_backend(
         })
 }
 
+/// Lê o atalho salvo em `config.json`, ou `ATALHO_PADRAO` se não houver
+/// nenhum salvo ainda (primeira execução).
+fn atalho_salvo(app: &AppHandle) -> String {
+    app.store("config.json")
+        .ok()
+        .and_then(|store| store.get("atalho"))
+        .and_then(|valor| valor.as_str().map(str::to_string))
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| ATALHO_PADRAO.to_string())
+}
+
 /// Chamado pela tela de Configurações quando o usuário salva um novo
 /// atalho. Falha de forma amigável (em vez de travar o app) quando a
 /// combinação já está em uso por outro programa.
@@ -64,6 +75,29 @@ fn registrar_atalho(app: AppHandle, atalho: String) -> Result<(), String> {
 
     println!("[select-translate] Atalho global registrado: {atalho}");
     Ok(())
+}
+
+/// Chamado quando o campo de atalho nas Configurações ganha foco (o
+/// usuário começou a "gravar" um novo atalho). Desregistra o atalho
+/// atual temporariamente — senão, se o usuário apertar a combinação que
+/// já está ativa (ou ela disparar por qualquer outro motivo enquanto o
+/// campo está focado), o Ctrl+C simulado pela captura normal cai
+/// direto nesse campo e é interpretado como se fosse a nova gravação.
+#[tauri::command]
+fn pausar_atalho_global(app: AppHandle) -> Result<(), String> {
+    app.global_shortcut()
+        .unregister_all()
+        .map_err(|erro| erro.to_string())
+}
+
+/// Chamado quando o campo de atalho perde o foco (gravação cancelada
+/// ou terminada sem clicar em "Salvar" — quem salva de verdade é
+/// `registrar_atalho`, que já re-registra com o valor novo). Volta a
+/// registrar o atalho que estava salvo antes de começar a gravação.
+#[tauri::command]
+fn retomar_atalho_global(app: AppHandle) -> Result<(), String> {
+    let atalho = atalho_salvo(&app);
+    registrar_atalho_no_backend(&app, &atalho).map_err(|erro| erro.to_string())
 }
 
 /// Traz a janela principal para frente e dá foco a ela — usado tanto
@@ -131,17 +165,12 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .setup(|app| {
-            let atalho_salvo = app
-                .store("config.json")?
-                .get("atalho")
-                .and_then(|valor| valor.as_str().map(str::to_string))
-                .filter(|s| !s.is_empty())
-                .unwrap_or_else(|| ATALHO_PADRAO.to_string());
+            let atalho = atalho_salvo(app.handle());
 
-            if let Err(erro) = registrar_atalho_no_backend(&app.handle().clone(), &atalho_salvo) {
-                println!("[select-translate] Falha ao registrar atalho '{atalho_salvo}': {erro}");
+            if let Err(erro) = registrar_atalho_no_backend(&app.handle().clone(), &atalho) {
+                println!("[select-translate] Falha ao registrar atalho '{atalho}': {erro}");
             } else {
-                println!("[select-translate] Atalho global registrado: {atalho_salvo}");
+                println!("[select-translate] Atalho global registrado: {atalho}");
             }
 
             captura::iniciar_monitoramento_automatico(app.handle().clone());
@@ -187,6 +216,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             registrar_atalho,
+            pausar_atalho_global,
+            retomar_atalho_global,
             definir_autostart,
             autostart_esta_ativo,
             definir_manter_no_topo

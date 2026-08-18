@@ -348,6 +348,22 @@ Descoberta ao investigar o pedido: as credenciais de DeepL **e** Azure já ficav
 
 ---
 
+## Correção — Conflito entre o gravador de atalho e o atalho global ativo
+
+*(fora da sequência numerada — bug encontrado pelo usuário)*
+
+Bug: com o campo "Atalho global" focado (gravando), se a combinação **já ativa** disparasse — por exemplo o usuário apertando de novo sem querer, ou o Ctrl+C simulado da captura normal — o global-shortcut do Tauri continuava registrado e concorria com o `keydown` do campo. Isso podia fazer o disparo do atalho antigo ser confundido com a gravação de um atalho novo (ou disparar uma captura indesejada) enquanto o usuário só estava tentando trocar o atalho.
+
+- [x] Novos commands `pausar_atalho_global`/`retomar_atalho_global` (`src-tauri/src/lib.rs`): desregistram o atalho global no `focus` do campo (início da gravação) e re-registram o atalho salvo no `blur` (gravação cancelada/abandonada)
+- [x] Função `atalho_salvo` extraída em `lib.rs` — usada tanto no `setup` (registro inicial) quanto em `retomar_atalho_global`, pra não duplicar a leitura da store
+- [x] Corrida entre "retomar o atalho antigo" (blur) e "salvar o atalho novo" (submit do formulário): resolvida com a flag `salvandoConfig` em `src/main.js`, setada no `mousedown` do botão Salvar (dispara antes do blur, já que o clique tira o foco do campo primeiro) — enquanto ela estiver ligada, o blur não chama `retomar_atalho_global`, evitando que a re-ativação do atalho antigo termine depois do `registrar_atalho` do novo e o desfaça silenciosamente
+
+**Observações:**
+- Sem testes novos: a correção é toda conexão de eventos DOM/IPC (`invoke` disparado em `focus`/`blur`/`mousedown`) e side effects no Rust (registrar/desregistrar atalho global via `GlobalShortcutExt`), sem lógica pura nova pra isolar — `atalho_salvo` só re-embala uma leitura de store já coberta indiretamente pelos testes manuais. `cargo test` (suite existente) e a suíte JS (`npm test`, 16 testes) continuam passando.
+- Validado manualmente: focar o campo e apertar o atalho atualmente ativo não dispara mais uma captura nem é interpretado como gravação; salvar um atalho novo continua funcionando sem a corrida derrubar o valor salvo.
+
+---
+
 ## Resumo visual
 
 ```

@@ -61,6 +61,18 @@ export function validarConfigFormulario({
   return null;
 }
 
+/**
+ * Corta `texto` em `limite` caracteres, acrescentando "…" quando corta
+ * de verdade (não quando o texto já cabia). Usado pelo popover pra não
+ * deixar a bolha crescer sem limite com uma seleção enorme.
+ */
+export function truncarTexto(texto, limite) {
+  if (texto.length <= limite) {
+    return texto;
+  }
+  return `${texto.slice(0, limite)}…`;
+}
+
 export async function lerConfig(chave, valorPadrao) {
   const { invoke } = window.__TAURI__.core;
   const rid = await garantirStoreCarregado();

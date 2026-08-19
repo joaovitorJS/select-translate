@@ -1,11 +1,19 @@
-/* Popover: bolha pequena e sem decoração (janela 360x160, ver
-   tauri.conf.json). Reaproveita os tokens de tema (tokens.css) e o
-   *visual* de algumas classes de styles.css (.bloco-texto,
-   .status-carregando, .mensagem.erro) — copiadas aqui em vez de
-   importar styles.css inteiro, que traria regras irrelevantes pra
-   essa janela (abas, formulário de config, histórico...). São
-   poucas linhas estáveis, o mesmo tipo de duplicação pequena e
-   deliberada já usada pra seta do <select> em cada tema. */
+/* Popover: bolha pequena e sem decoração, largura fixa (320px, ver
+   tauri.conf.json) e altura ajustada ao conteúdo via JS
+   (popover.js#ajustarTamanhoAoConteudo) — por isso nada aqui força
+   `height: 100%` no body/shell, o que atrapalharia medir a altura
+   "natural" do conteúdo. `max-height`/`overflow-y` no `.popover-shell`
+   são só uma rede de segurança pro caso raro de o texto (já truncado
+   em 500 caracteres) ainda assim passar do limite (ex: uma palavra
+   gigante sem espaço, que não quebra linha).
+
+   Reaproveita os tokens de tema (tokens.css) e o *visual* de algumas
+   classes de styles.css (.bloco-texto, .status-carregando,
+   .mensagem.erro) — copiadas aqui em vez de importar styles.css
+   inteiro, que traria regras irrelevantes pra essa janela (abas,
+   formulário de config, histórico...). São poucas linhas estáveis, o
+   mesmo tipo de duplicação pequena e deliberada já usada pra seta do
+   <select> em cada tema. */
 
 * {
   box-sizing: border-box;
@@ -14,8 +22,6 @@
 html,
 body {
   margin: 0;
-  height: 100%;
-  overflow: hidden;
 }
 
 .popover-body {
@@ -25,7 +31,7 @@ body {
 }
 
 .popover-shell {
-  height: 100%;
+  max-height: 400px;
   padding: 0.75em;
   display: flex;
   flex-direction: column;
@@ -39,6 +45,7 @@ body {
 
 .bloco-texto {
   white-space: pre-wrap;
+  overflow-wrap: break-word;
   margin: 0;
   padding: 0.6em 0.7em;
   border-radius: var(--raio);
@@ -46,10 +53,6 @@ body {
   border: 1px solid var(--borda);
   box-shadow: var(--sombra);
   font-size: 0.92em;
-}
-
-.popover-original {
-  color: var(--texto-suave);
 }
 
 .status-carregando {

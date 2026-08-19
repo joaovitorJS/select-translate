@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { montarAtalhoDoEvento, resolverTema, validarConfigFormulario } from "./config.js";
+import {
+  montarAtalhoDoEvento,
+  resolverTema,
+  truncarTexto,
+  validarConfigFormulario,
+} from "./config.js";
 
 const base = {
   atalho: "CommandOrControl+Alt+T",
@@ -61,6 +66,15 @@ test("aceita configuração válida do Azure", () => {
     azureRegiao: "brazilsouth",
   };
   assert.equal(validarConfigFormulario(valido), null);
+});
+
+test("truncarTexto mantém o texto igual quando já cabe no limite", () => {
+  assert.equal(truncarTexto("abc", 5), "abc");
+  assert.equal(truncarTexto("abcde", 5), "abcde");
+});
+
+test("truncarTexto corta e acrescenta reticências quando passa do limite", () => {
+  assert.equal(truncarTexto("abcdef", 5), "abcde…");
 });
 
 test("resolverTema respeita preferência explícita, ignorando o sistema", () => {

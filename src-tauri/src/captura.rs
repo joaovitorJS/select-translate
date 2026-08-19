@@ -310,7 +310,7 @@ fn traduzir_e_notificar(app: AppHandle, texto: String, destino: DestinoTraducao)
                             let tamanho = janela
                                 .outer_size()
                                 .map(|s| (s.width, s.height))
-                                .unwrap_or((360, 160));
+                                .unwrap_or((320, 70));
                             let tela = limites_do_monitor_do_cursor(&janela, cursor);
                             let (x, y) = popover::calcular_posicao_popover(cursor, tamanho, tela);
 

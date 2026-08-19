@@ -998,6 +998,33 @@ principal.
   como `styles.css` já fazia) — com a mesma especificidade, quem vier depois
   no arquivo vence o empate, e os pontinhos de "carregando" ficavam visíveis
   pra sempre porque a regra errada estava ganhando.
+- **v2 — só a tradução, bolha ajustada ao conteúdo**: a pedido do usuário
+  depois do primeiro teste real, o texto original saiu da bolha (só a
+  tradução fica) e a altura da janela passou a se ajustar ao conteúdo —
+  a largura continua fixa (320px), só a altura muda, com um teto de 400px
+  e um corte de 500 caracteres na tradução (`truncarTexto`, `config.js`)
+  como dois limites independentes que se reforçam. `popover.js` mede
+  `document.getElementById("popover-shell").scrollHeight` **direto**
+  (nada de `requestAnimationFrame`: o evento de tradução chega antes do
+  `.show()` do lado Rust, com a janela ainda escondida, e um rAF agendado
+  nesse estado fica parado até a janela aparecer — ler `scrollHeight`
+  logo depois de mudar o `textContent` já força o layout na hora, sem
+  precisar esperar nada) e chama `getCurrentWindow().setSize(new
+  LogicalSize(largura, altura))` — permissão nova na capability do
+  popover, `core:window:allow-set-size`.
+  Dois bugs reais surgiram só ao testar visualmente (nenhum teste
+  automatizado pegaria): (1) o container tinha só `class="popover-shell"`
+  no HTML, sem `id` — `getElementById` sempre voltava `null`, e
+  `null.scrollHeight` quebrava a função de resize silenciosamente, sem
+  nenhum erro visível no terminal (só devtools do webview mostraria, e
+  não há uma forma fácil de abri-los headless); (2) o texto usado pra
+  testar (fake, sem chave de API de verdade) não tinha espaços, então
+  `white-space: pre-wrap` não achava onde quebrar linha e a "tradução"
+  virava uma única linha horizontal gigante em vez de crescer em altura
+  — não afeta tradução real (sempre tem espaços), mas expôs que
+  `.bloco-texto` não tinha `overflow-wrap: break-word`, então uma
+  palavra/URL genuinamente sem espaço vazaria da caixa; corrigido
+  acrescentando essa propriedade.
 
 ---
 

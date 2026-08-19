@@ -257,13 +257,36 @@ function capturarTeclaDoAtalho(evento) {
   }
 }
 
+// Liga o comportamento de "gravador" num campo de atalho — usado tanto
+// pelo atalho principal quanto pelo do popover, os dois se comportam
+// exatamente igual (inclusive pausando/retomando os DOIS atalhos
+// globais no foco/blur, não só o do campo em questão — ver comentário
+// de `pausar_atalho_global` no lado Rust).
+function ligarGravadorDeAtalho(input) {
+  input.addEventListener("keydown", capturarTeclaDoAtalho);
+  input.addEventListener("focus", () => {
+    input.classList.add("gravando");
+    invoke("pausar_atalho_global");
+  });
+  input.addEventListener("blur", () => {
+    input.classList.remove("gravando");
+    if (!salvandoConfig) {
+      invoke("retomar_atalho_global");
+    }
+  });
+}
+
 async function carregarConfigNaTela() {
   const atalho = await lerConfig("atalho", "CommandOrControl+Alt+T");
+  const atalhoPopover = await lerConfig("atalho_popover", "CommandOrControl+Alt+P");
+  const popoverAtivo = await lerConfig("popover_ativo", false);
   const idioma = await lerConfig("idioma", "pt-br");
   const provedor = await lerConfig("provedor", "deepl");
   const modoAutomatico = await lerConfig("modo_automatico", false);
 
   document.getElementById("input-atalho").value = atalho;
+  document.getElementById("input-atalho-popover").value = atalhoPopover;
+  document.getElementById("input-popover-ativo").checked = popoverAtivo;
   document.getElementById("input-modo-automatico").checked = modoAutomatico;
   document.getElementById("input-autostart").checked = await invoke("autostart_esta_ativo");
   document.getElementById("input-manter-no-topo").checked = await lerConfig(
@@ -307,6 +330,23 @@ async function alternarAutostart(evento) {
   }
 }
 
+// Mesmo padrão do autostart/modo automático: liga/desliga o atalho do
+// popover na hora, sem precisar de "Salvar". O atalho em si (qual
+// combinação de teclas) continua sendo salvo só ao clicar em "Salvar",
+// igual ao atalho principal — só o liga/desliga é imediato.
+async function alternarPopoverAtivo(evento) {
+  try {
+    await invoke("definir_popover_ativo", { ativo: evento.target.checked });
+    mostrarMensagemConfig(
+      evento.target.checked ? "Popover de tradução ativado." : "Popover de tradução desativado.",
+      "sucesso",
+    );
+  } catch (erro) {
+    evento.target.checked = !evento.target.checked;
+    mostrarMensagemConfig(`Não foi possível alterar isso: ${erro}`, "erro");
+  }
+}
+
 // Mesmo padrão do autostart: aplica na janela e salva no mesmo command,
 // efeito imediato sem precisar de "Salvar".
 async function alternarManterNoTopo(evento) {
@@ -330,6 +370,8 @@ async function salvarConfigDaTela(evento) {
   try {
     const estado = {
       atalho: document.getElementById("input-atalho").value.trim(),
+      atalhoPopover: document.getElementById("input-atalho-popover").value.trim(),
+      popoverAtivo: document.getElementById("input-popover-ativo").checked,
       idioma: document.getElementById("select-idioma").value,
       provedor: document.getElementById("select-provedor").value,
       deeplKey: document.getElementById("input-deepl-key").value.trim(),
@@ -350,6 +392,19 @@ async function salvarConfigDaTela(evento) {
       await invoke("registrar_atalho", { atalho: estado.atalho });
     } catch (erroAtalho) {
       mostrarMensagemConfig(`Não foi possível registrar esse atalho: ${erroAtalho}`, "erro");
+      return;
+    }
+
+    // Mesma lógica do atalho principal — sempre salva o atalho do
+    // popover (mesmo com o popover desativado), só quem decide se ele
+    // fica de fato registrado é `definir_popover_ativo`/o checkbox.
+    try {
+      await invoke("registrar_atalho_popover", { atalho: estado.atalhoPopover });
+    } catch (erroAtalho) {
+      mostrarMensagemConfig(
+        `Não foi possível registrar esse atalho do popover: ${erroAtalho}`,
+        "erro",
+      );
       return;
     }
 
@@ -389,27 +444,16 @@ window.addEventListener("DOMContentLoaded", () => {
 
   popularSelectIdiomas();
   carregarConfigNaTela();
-  const inputAtalho = document.getElementById("input-atalho");
-  inputAtalho.addEventListener("keydown", capturarTeclaDoAtalho);
-  inputAtalho.addEventListener("focus", () => {
-    inputAtalho.classList.add("gravando");
-    // Desliga o atalho global enquanto grava — senão, se a combinação
-    // atual disparar (ex: o usuário aperta o atalho de novo sem querer
-    // com o campo ainda focado), o Ctrl+C simulado pela captura normal
-    // cai nesse campo e vira "a nova gravação" por engano.
-    invoke("pausar_atalho_global");
-  });
-  inputAtalho.addEventListener("blur", () => {
-    inputAtalho.classList.remove("gravando");
-    if (!salvandoConfig) {
-      invoke("retomar_atalho_global");
-    }
-  });
+  ligarGravadorDeAtalho(document.getElementById("input-atalho"));
+  ligarGravadorDeAtalho(document.getElementById("input-atalho-popover"));
   document
     .querySelector("#form-config button[type='submit']")
     .addEventListener("mousedown", () => {
       salvandoConfig = true;
     });
+  document
+    .getElementById("input-popover-ativo")
+    .addEventListener("change", alternarPopoverAtivo);
   document
     .getElementById("select-provedor")
     .addEventListener("change", (evento) => definirProvedorAtivo(evento.target.value));

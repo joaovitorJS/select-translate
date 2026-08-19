@@ -37,9 +37,20 @@ export async function salvarConfig(chave, valor) {
  * exige campos diferentes. Retorna a mensagem de erro, ou `null` se
  * estiver tudo certo.
  */
-export function validarConfigFormulario({ atalho, provedor, deeplKey, azureKey, azureRegiao }) {
+export function validarConfigFormulario({
+  atalho,
+  atalhoPopover,
+  popoverAtivo,
+  provedor,
+  deeplKey,
+  azureKey,
+  azureRegiao,
+}) {
   if (!atalho) {
     return "Informe um atalho.";
+  }
+  if (popoverAtivo && !atalhoPopover) {
+    return "Informe um atalho para o popover (ou desative o popover).";
   }
   if (provedor === "deepl" && !deeplKey) {
     return "Informe a chave da API do DeepL.";

@@ -18,6 +18,28 @@ test("rejeita quando o atalho está vazio", () => {
   assert.match(validarConfigFormulario({ ...base, atalho: "" }), /atalho/i);
 });
 
+test("aceita atalho do popover vazio quando o popover está desativado", () => {
+  assert.equal(validarConfigFormulario({ ...base, popoverAtivo: false, atalhoPopover: "" }), null);
+});
+
+test("rejeita atalho do popover vazio quando o popover está ativado", () => {
+  assert.match(
+    validarConfigFormulario({ ...base, popoverAtivo: true, atalhoPopover: "" }),
+    /popover/i,
+  );
+});
+
+test("aceita atalho do popover preenchido quando o popover está ativado", () => {
+  assert.equal(
+    validarConfigFormulario({
+      ...base,
+      popoverAtivo: true,
+      atalhoPopover: "CommandOrControl+Alt+P",
+    }),
+    null,
+  );
+});
+
 test("rejeita DeepL sem chave de API", () => {
   assert.match(validarConfigFormulario({ ...base, deeplKey: "" }), /DeepL/);
 });

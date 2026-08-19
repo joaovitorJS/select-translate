@@ -1,4 +1,5 @@
 mod captura;
+mod popover;
 mod traducao;
 
 use tauri::{
@@ -13,6 +14,9 @@ use tauri_plugin_store::StoreExt;
 
 /// Usado só se a store ainda não tiver um atalho salvo (primeira execução).
 const ATALHO_PADRAO: &str = "CommandOrControl+Alt+T";
+
+/// Idem, para o atalho do popover (Melhoria — Popover de tradução).
+const ATALHO_POPOVER_PADRAO: &str = "CommandOrControl+Alt+P";
 
 /// Mesmo caminho usado pelo frontend (src/historico.js) ao chamar os
 /// commands `plugin:sql|execute`/`plugin:sql|select`.
@@ -33,21 +37,40 @@ fn migracoes_banco() -> Vec<Migration> {
     }]
 }
 
-/// Desregistra qualquer atalho anterior e registra `atalho` para
-/// disparar a captura+tradução. Usado tanto na inicialização (com o
-/// atalho salvo, ou o padrão na primeira execução) quanto pelo command
-/// `registrar_atalho` quando o usuário troca o atalho nas Configurações.
-fn registrar_atalho_no_backend(
+/// Desregistra os atalhos anteriores e registra de novo os dois — o
+/// principal (sempre) e o do popover (só se `popover_ativo` estiver
+/// ligado na store). Precisa reconstruir os dois juntos porque
+/// `unregister_all()` do plugin desregistra **todos** os atalhos
+/// globais do processo, não só um — chamar isso pra atualizar um dos
+/// dois (ex: usuário troca o atalho principal) apagaria o outro sem
+/// querer se cada atalho fosse registrado de forma independente. Usado
+/// na inicialização e por todo command que mexe em algum dos atalhos
+/// (`registrar_atalho`, `registrar_atalho_popover`,
+/// `pausar_atalho_global`/`retomar_atalho_global`, `definir_popover_ativo`).
+fn sincronizar_atalhos_no_backend(
     app: &AppHandle,
-    atalho: &str,
 ) -> Result<(), tauri_plugin_global_shortcut::Error> {
     app.global_shortcut().unregister_all()?;
+
+    let atalho = atalho_salvo(app);
     app.global_shortcut()
-        .on_shortcut(atalho, move |app, _shortcut, event| {
+        .on_shortcut(atalho.as_str(), move |app, _shortcut, event| {
             if event.state() == ShortcutState::Pressed {
                 captura::capturar_e_traduzir(app.clone());
             }
-        })
+        })?;
+
+    if popover_ativo(app) {
+        let atalho_popover = atalho_popover_salvo(app);
+        app.global_shortcut()
+            .on_shortcut(atalho_popover.as_str(), move |app, _shortcut, event| {
+                if event.state() == ShortcutState::Pressed {
+                    captura::capturar_e_traduzir_popover(app.clone());
+                }
+            })?;
+    }
+
+    Ok(())
 }
 
 /// Lê o atalho salvo em `config.json`, ou `ATALHO_PADRAO` se não houver
@@ -61,28 +84,74 @@ fn atalho_salvo(app: &AppHandle) -> String {
         .unwrap_or_else(|| ATALHO_PADRAO.to_string())
 }
 
+/// Idem, para o atalho do popover.
+fn atalho_popover_salvo(app: &AppHandle) -> String {
+    app.store("config.json")
+        .ok()
+        .and_then(|store| store.get("atalho_popover"))
+        .and_then(|valor| valor.as_str().map(str::to_string))
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| ATALHO_POPOVER_PADRAO.to_string())
+}
+
+/// O popover vem desativado por padrão (igual ao modo automático) — o
+/// usuário liga de propósito nas Configurações.
+fn popover_ativo(app: &AppHandle) -> bool {
+    app.store("config.json")
+        .ok()
+        .and_then(|store| store.get("popover_ativo"))
+        .and_then(|valor| valor.as_bool())
+        .unwrap_or(false)
+}
+
 /// Chamado pela tela de Configurações quando o usuário salva um novo
-/// atalho. Falha de forma amigável (em vez de travar o app) quando a
-/// combinação já está em uso por outro programa.
+/// atalho principal. Falha de forma amigável (em vez de travar o app)
+/// quando a combinação já está em uso por outro programa.
 #[tauri::command]
 fn registrar_atalho(app: AppHandle, atalho: String) -> Result<(), String> {
-    registrar_atalho_no_backend(&app, &atalho).map_err(|erro| erro.to_string())?;
-
     if let Ok(store) = app.store("config.json") {
         store.set("atalho", serde_json::json!(atalho));
         let _ = store.save();
     }
 
+    sincronizar_atalhos_no_backend(&app).map_err(|erro| erro.to_string())?;
+
     println!("[select-translate] Atalho global registrado: {atalho}");
     Ok(())
 }
 
-/// Chamado quando o campo de atalho nas Configurações ganha foco (o
-/// usuário começou a "gravar" um novo atalho). Desregistra o atalho
-/// atual temporariamente — senão, se o usuário apertar a combinação que
-/// já está ativa (ou ela disparar por qualquer outro motivo enquanto o
-/// campo está focado), o Ctrl+C simulado pela captura normal cai
-/// direto nesse campo e é interpretado como se fosse a nova gravação.
+/// Idem, para o atalho do popover.
+#[tauri::command]
+fn registrar_atalho_popover(app: AppHandle, atalho: String) -> Result<(), String> {
+    if let Ok(store) = app.store("config.json") {
+        store.set("atalho_popover", serde_json::json!(atalho));
+        let _ = store.save();
+    }
+
+    sincronizar_atalhos_no_backend(&app).map_err(|erro| erro.to_string())?;
+
+    println!("[select-translate] Atalho do popover registrado: {atalho}");
+    Ok(())
+}
+
+/// Liga/desliga o atalho do popover. Aplica na hora (sem precisar
+/// reiniciar o app), igual ao "manter no topo".
+#[tauri::command]
+fn definir_popover_ativo(app: AppHandle, ativo: bool) -> Result<(), String> {
+    if let Ok(store) = app.store("config.json") {
+        store.set("popover_ativo", serde_json::json!(ativo));
+        let _ = store.save();
+    }
+
+    sincronizar_atalhos_no_backend(&app).map_err(|erro| erro.to_string())
+}
+
+/// Chamado quando um dos dois campos de atalho nas Configurações ganha
+/// foco (o usuário começou a "gravar" um novo atalho). Desregistra os
+/// dois atalhos temporariamente — senão, se algum deles disparar
+/// enquanto o campo está focado (ex: usuário aperta a combinação já
+/// ativa), o Ctrl+C simulado pela captura normal cai direto nesse
+/// campo e é interpretado como se fosse a nova gravação.
 #[tauri::command]
 fn pausar_atalho_global(app: AppHandle) -> Result<(), String> {
     app.global_shortcut()
@@ -90,14 +159,14 @@ fn pausar_atalho_global(app: AppHandle) -> Result<(), String> {
         .map_err(|erro| erro.to_string())
 }
 
-/// Chamado quando o campo de atalho perde o foco (gravação cancelada
-/// ou terminada sem clicar em "Salvar" — quem salva de verdade é
-/// `registrar_atalho`, que já re-registra com o valor novo). Volta a
-/// registrar o atalho que estava salvo antes de começar a gravação.
+/// Chamado quando um dos campos de atalho perde o foco (gravação
+/// cancelada ou terminada sem clicar em "Salvar" — quem salva de
+/// verdade é `registrar_atalho`/`registrar_atalho_popover`, que já
+/// re-sincronizam com o valor novo). Volta a registrar os atalhos que
+/// estavam salvos antes de começar a gravação.
 #[tauri::command]
 fn retomar_atalho_global(app: AppHandle) -> Result<(), String> {
-    let atalho = atalho_salvo(&app);
-    registrar_atalho_no_backend(&app, &atalho).map_err(|erro| erro.to_string())
+    sincronizar_atalhos_no_backend(&app).map_err(|erro| erro.to_string())
 }
 
 /// Traz a janela principal para frente e dá foco a ela — usado tanto
@@ -165,12 +234,13 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .setup(|app| {
-            let atalho = atalho_salvo(app.handle());
-
-            if let Err(erro) = registrar_atalho_no_backend(&app.handle().clone(), &atalho) {
-                println!("[select-translate] Falha ao registrar atalho '{atalho}': {erro}");
+            if let Err(erro) = sincronizar_atalhos_no_backend(&app.handle().clone()) {
+                println!("[select-translate] Falha ao registrar atalhos globais: {erro}");
             } else {
-                println!("[select-translate] Atalho global registrado: {atalho}");
+                println!(
+                    "[select-translate] Atalho global registrado: {}",
+                    atalho_salvo(app.handle())
+                );
             }
 
             captura::iniciar_monitoramento_automatico(app.handle().clone());
@@ -212,10 +282,25 @@ pub fn run() {
                 }
             }
 
+            // Popover: some sozinho ao perder o foco (clicar fora, Alt+Tab
+            // etc.) — não tem borda nem botão de fechar, então é a única
+            // forma "natural" de dispensá-lo além do Esc (tratado no
+            // frontend, ver popover.js).
+            if let Some(janela_popover) = app.get_webview_window("popover") {
+                let janela_popover_para_esconder = janela_popover.clone();
+                janela_popover.on_window_event(move |event| {
+                    if let WindowEvent::Focused(false) = event {
+                        let _ = janela_popover_para_esconder.hide();
+                    }
+                });
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             registrar_atalho,
+            registrar_atalho_popover,
+            definir_popover_ativo,
             pausar_atalho_global,
             retomar_atalho_global,
             definir_autostart,

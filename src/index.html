@@ -2,6 +2,7 @@
 <html lang="pt-br">
   <head>
     <meta charset="UTF-8" />
+    <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Select Translate</title>
@@ -87,6 +88,28 @@
                 <span class="switch">
                   <input type="checkbox" id="input-modo-automatico" />
                   <span class="switch-trilho"><span class="switch-bolinha"></span></span>
+                </span>
+              </label>
+
+              <label class="linha-switch">
+                <span>Popover — mostrar a tradução numa bolha perto do cursor, sem abrir a janela</span>
+                <span class="switch">
+                  <input type="checkbox" id="input-popover-ativo" />
+                  <span class="switch-trilho"><span class="switch-bolinha"></span></span>
+                </span>
+              </label>
+
+              <label>
+                Atalho do popover
+                <input
+                  id="input-atalho-popover"
+                  type="text"
+                  readonly
+                  placeholder="Clique aqui e pressione as teclas"
+                />
+                <span class="dica-campo">
+                  Só funciona com o popover ativado acima. Clique no campo e pressione a
+                  combinação desejada. Esc cancela.
                 </span>
               </label>
             </fieldset>

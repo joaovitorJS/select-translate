@@ -423,6 +423,33 @@ Bug: os pacotes Linux publicados nas releases (Fase 11 em diante) foram compilad
 
 ---
 
+## Melhoria — Popover de tradução (segundo atalho)
+*(fora da sequência numerada — pedido direto do usuário: "como seria pra fazer um outro atalho que abriria um popover com a tradução tipo o que tem na extensão do Google tradutor?")*
+
+Objetivo: um segundo atalho global (padrão `CommandOrControl+Alt+P`), independente do principal, que mostra a tradução numa bolha pequena e sem decoração perto do cursor — sem levantar a janela principal. Desativado por padrão (opt-in, mesmo padrão do modo automático); v1 minimalista, só texto original + traduzido, sem botão de copiar.
+
+- [x] Segunda janela declarada em `tauri.conf.json` (`label: "popover"`), estática e escondida na inicialização — `visible: false`, `decorations: false`, `alwaysOnTop: true`, `skipTaskbar: true`, `resizable: false` — mostrar depois é só um `.show()` barato, sem o custo de criar a janela do zero a cada atalho
+- [x] Nova capability `src-tauri/capabilities/popover.json`, mínima (`core:window:allow-hide`, `store:allow-load`/`allow-get` — sem `sql:*`, histórico continua só na janela principal)
+- [x] `sincronizar_atalhos_no_backend` (substitui `registrar_atalho_no_backend`) — reconstrói os dois atalhos (principal sempre, popover só se `popover_ativo`) toda vez que qualquer um deles muda, porque `unregister_all()` do plugin apaga **todos** os atalhos, não só o que está sendo trocado
+- [x] Novo módulo `src-tauri/src/popover.rs`: `calcular_posicao_popover` (função pura, desloca a bolha do cursor e faz *clamp* pra não sair da tela) com testes cobrindo bordas/cantos/tela fora de `(0,0)` (multi-monitor)
+- [x] `captura.rs`: enum `DestinoTraducao` (`Principal`/`Popover { cursor }`), `capturar_e_traduzir_popover` (captura a posição do cursor via `enigo::Mouse::location()` **antes** da chamada assíncrona de tradução — o cursor pode se mover enquanto ela roda), `traduzir_e_notificar` agora recebe o destino e usa `emit_to` (não `emit` geral) pra só a janela certa reagir a cada evento
+- [x] Popover reaproveita `aguardar_janela_aparecer()` (a pausa de 100ms no Linux entre `show()`/`set_focus()`, já genérica — ver correção da issue #2 acima) e some sozinho ao perder o foco (`WindowEvent::Focused(false)` → `.hide()`, tratado em `lib.rs`) ou com Esc (tratado em `popover.js`)
+- [x] Config nova: `atalho_popover` (padrão `CommandOrControl+Alt+P`) e `popover_ativo` (padrão `false`) — commands `registrar_atalho_popover`/`definir_popover_ativo` espelhando `registrar_atalho`/`definir_manter_no_topo`
+- [x] Segundo campo de gravação de atalho + checkbox "Ativar popover" na aba Configurações — `ligarGravadorDeAtalho` extraído em `main.js` pra não duplicar a fiação de foco/blur entre os dois campos
+- [x] `src/tokens.css` extraído de `styles.css` (paleta/tema) — compartilhado por `index.html` e o novo `popover.html`, já que cada janela do Tauri carrega seu próprio documento
+- [x] `src/popover.html`/`popover.js`/`popover.css` novos — shell mínimo sem abas, reaproveita `resolverTema`/`lerConfig` de `config.js` e o *visual* de `.bloco-texto`/`.status-carregando`/`.mensagem.erro` (copiado, não importado — ver comentário em `popover.css`)
+- [x] Testes: `#[test]` novos pra `calcular_posicao_popover` (Rust) e pra `validarConfigFormulario` com a nova regra do atalho do popover (JS) — `sincronizar_atalhos_no_backend` não é isolável em teste unitário (side effects contra o plugin de atalho global), cobertura por validação manual
+- [x] Validação no Linux/WSLg (mesma técnica das correções anteriores: `xdotool`/janela Tk de teste, atalho disparado de verdade)
+
+**Observações:**
+- `cargo test`: 25 (19 anteriores + 6 novos de `calcular_posicao_popover`). `npm test`: 19 (16 anteriores + 3 novos de `validarConfigFormulario`/atalho do popover). Ambos passando.
+- Bug real encontrado só na validação visual (não pega em teste automatizado): os pontinhos de "carregando" (`.status-carregando`) continuavam aparecendo mesmo depois da tradução pronta. Causa: `popover.css` tinha `.oculto { display: none }` declarado **antes** de `.status-carregando { display: inline-flex }` — mesma especificidade (uma classe cada), então a regra que vem depois no arquivo vencia o empate, e `inline-flex` sempre ganhava de `none`. `styles.css` já resolvia isso com um seletor combinado mais específico (`.status-carregando.oculto`); faltou copiar esse detalhe pro `popover.css`. Corrigido replicando o mesmo padrão.
+- Fluxo completo testado de ponta a ponta com um bypass temporário (`traducao::traduzir` substituído por um resultado fixo, só nesta sessão de teste, revertido antes de commitar) — sem isso não dava pra validar visualmente sem uma chave de API de verdade: atalho do popover captura o texto certo, bolha aparece perto do cursor com o texto original + traduzido, ganha foco de verdade (`is_focused` implícito no teste — a bolha virou a janela ativa).
+- **Esc esconde a bolha de forma confiável** (testado, funciona). **"Esconder ao clicar fora" (`WindowEvent::Focused(false)`) não dessa vez** — nem `xdotool windowactivate` nem um clique de verdade na janela Tk tiraram o foco da bolha nesse ambiente. Causa provável: o WSLg não roda um window manager de verdade (só o compositor mínimo, sem gerenciamento de foco-segue-clique — mesma limitação já documentada na Fase 11 pra bandeja/atalhos/Wayland nativo), não necessariamente um bug do código. Não foi possível confirmar em um desktop Linux real (GNOME/KDE) nesta sessão — **fica como risco conhecido, não validado**, com Esc como forma garantida de fechar a bolha enquanto isso não for confirmado.
+- Também confirmado: desativar o popover (`popover_ativo = false`) faz o atalho ficar completamente inerte na hora (sem precisar reiniciar o app), sem afetar o atalho principal.
+
+---
+
 ## Resumo visual
 
 ```

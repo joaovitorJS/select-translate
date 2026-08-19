@@ -1,9 +1,10 @@
-use enigo::{Direction, Enigo, Key, Keyboard, Settings};
+use enigo::{Direction, Enigo, Key, Keyboard, Mouse, Settings};
 use std::{thread, time::Duration};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, EventTarget, Manager};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_store::StoreExt;
 
+use crate::popover;
 use crate::traducao;
 
 /// Intervalo entre checagens do clipboard no modo automático.
@@ -82,9 +83,22 @@ fn simular_copiar() -> Result<(), String> {
     Ok(())
 }
 
-/// Dispara pelo atalho global: captura o texto selecionado em
-/// qualquer app (via clipboard, simulando Ctrl+C) e envia para tradução.
-pub fn capturar_e_traduzir(app: AppHandle) {
+/// Pra onde mandar o resultado de uma tradução: a janela principal (de
+/// sempre) ou o popover perto do cursor (Melhoria — Popover de tradução).
+/// `Popover` carrega a posição do cursor no instante da captura — não
+/// dá pra reler o cursor só quando a tradução termina, porque o
+/// usuário já pode ter movido o mouse até lá (a chamada à API de
+/// tradução é assíncrona e pode levar um tempo).
+#[derive(Clone, Copy)]
+pub enum DestinoTraducao {
+    Principal,
+    Popover { cursor: (i32, i32) },
+}
+
+/// Compartilhada pelos dois atalhos globais (principal e popover) e
+/// pelo modo automático: captura o texto selecionado em qualquer app
+/// (via clipboard, simulando Ctrl+C) e envia para tradução.
+fn capturar_e_traduzir_com_destino(app: AppHandle, destino: DestinoTraducao) {
     let clipboard_original = app.clipboard().read_text().unwrap_or_default();
 
     if let Err(erro) = simular_copiar() {
@@ -100,7 +114,24 @@ pub fn capturar_e_traduzir(app: AppHandle) {
     }
 
     println!("[select-translate] Texto capturado: {texto_capturado}");
-    traduzir_e_notificar(app, texto_capturado);
+    traduzir_e_notificar(app, texto_capturado, destino);
+}
+
+/// Dispara pelo atalho global principal: mostra o resultado na janela
+/// principal, como sempre.
+pub fn capturar_e_traduzir(app: AppHandle) {
+    capturar_e_traduzir_com_destino(app, DestinoTraducao::Principal);
+}
+
+/// Dispara pelo atalho global do popover: mostra o resultado numa
+/// bolha pequena perto de onde o cursor estava na hora da captura, sem
+/// levantar a janela principal.
+pub fn capturar_e_traduzir_popover(app: AppHandle) {
+    let cursor = Enigo::new(&Settings::default())
+        .ok()
+        .and_then(|enigo| enigo.location().ok())
+        .unwrap_or((0, 0));
+    capturar_e_traduzir_com_destino(app, DestinoTraducao::Popover { cursor });
 }
 
 /// Interpreta um valor booleano opcional lido da store (`config.json`).
@@ -150,7 +181,7 @@ pub fn iniciar_monitoramento_automatico(app: AppHandle) {
             if houve_novo_texto(&ultimo_valor, &atual) {
                 ultimo_valor = atual.clone();
                 println!("[select-translate] (modo automático) Texto capturado: {atual}");
-                traduzir_e_notificar(app.clone(), atual);
+                traduzir_e_notificar(app.clone(), atual, DestinoTraducao::Principal);
             }
         }
     });
@@ -175,18 +206,74 @@ async fn aguardar_janela_aparecer() {
 #[cfg(not(target_os = "linux"))]
 async fn aguardar_janela_aparecer() {}
 
-/// Compartilhado pelos dois modos de captura: chama o provedor de
-/// tradução configurado e notifica a UI (eventos de início/erro/sucesso
-/// + trazer janela pra frente) durante o processo.
-fn traduzir_e_notificar(app: AppHandle, texto: String) {
-    let _ = app.emit("traducao-iniciada", serde_json::json!({ "original": texto }));
+/// Rótulo da janela e evento a usar conforme o destino — os dois
+/// eventos (`emit_to`, não `emit` geral) só chegam na janela que
+/// efetivamente vai mostrar o resultado, senão o popover reagiria a
+/// traduções disparadas pelo atalho principal (e vice-versa).
+fn janela_do_destino(destino: DestinoTraducao) -> &'static str {
+    match destino {
+        DestinoTraducao::Principal => "main",
+        DestinoTraducao::Popover { .. } => "popover",
+    }
+}
+
+/// Acha os limites (posição + tamanho) do monitor que contém o
+/// `cursor`, ou cai pro monitor atual da janela como aproximação
+/// razoável se nenhum bater exatamente (ex: coordenada um pixel fora
+/// por arredondamento em telas com escala fracionária).
+fn limites_do_monitor_do_cursor(
+    janela: &tauri::WebviewWindow,
+    cursor: (i32, i32),
+) -> (i32, i32, u32, u32) {
+    let monitores = janela.available_monitors().unwrap_or_default();
+
+    let encontrado = monitores.iter().find(|monitor| {
+        let posicao = monitor.position();
+        let tamanho = monitor.size();
+        cursor.0 >= posicao.x
+            && cursor.0 < posicao.x + tamanho.width as i32
+            && cursor.1 >= posicao.y
+            && cursor.1 < posicao.y + tamanho.height as i32
+    });
+
+    let monitor = encontrado
+        .cloned()
+        .or_else(|| janela.current_monitor().ok().flatten());
+
+    match monitor {
+        Some(monitor) => {
+            let posicao = monitor.position();
+            let tamanho = monitor.size();
+            (posicao.x, posicao.y, tamanho.width, tamanho.height)
+        }
+        // Fallback bruto (Full HD) só pro caso extremo de não haver
+        // nenhum monitor detectável — não deveria acontecer na prática.
+        None => (0, 0, 1920, 1080),
+    }
+}
+
+/// Compartilhado pelos dois atalhos globais e pelo modo automático:
+/// chama o provedor de tradução configurado e notifica a UI (eventos
+/// de início/erro/sucesso + mostrar o resultado na janela certa)
+/// durante o processo.
+fn traduzir_e_notificar(app: AppHandle, texto: String, destino: DestinoTraducao) {
+    let janela_alvo = janela_do_destino(destino);
+    let _ = app.emit_to(
+        EventTarget::labeled(janela_alvo),
+        "traducao-iniciada",
+        serde_json::json!({ "original": texto }),
+    );
 
     tauri::async_runtime::spawn(async move {
         let (config, idioma) = match traducao::configuracao_do_store(&app) {
             Ok(resultado) => resultado,
             Err(erro) => {
                 println!("[select-translate] {erro}");
-                let _ = app.emit("traducao-erro", serde_json::json!({ "erro": erro }));
+                let _ = app.emit_to(
+                    EventTarget::labeled(janela_alvo),
+                    "traducao-erro",
+                    serde_json::json!({ "erro": erro }),
+                );
                 return;
             }
         };
@@ -194,7 +281,8 @@ fn traduzir_e_notificar(app: AppHandle, texto: String) {
         match traducao::traduzir(&config, &texto, &idioma).await {
             Ok(traduzido) => {
                 println!("[select-translate] Tradução: {traduzido}");
-                let _ = app.emit(
+                let _ = app.emit_to(
+                    EventTarget::labeled(janela_alvo),
                     "nova-traducao",
                     serde_json::json!({
                         "original": texto,
@@ -203,20 +291,48 @@ fn traduzir_e_notificar(app: AppHandle, texto: String) {
                     }),
                 );
 
-                if let Some(janela) = app.get_webview_window("main") {
-                    let _ = janela.show();
-                    aguardar_janela_aparecer().await;
-                    // Com "manter no topo" ligado, a janela já fica sempre
-                    // visível acima das outras — não precisa roubar o foco
-                    // do que o usuário está digitando a cada tradução.
-                    if !manter_no_topo_ativo(&app) {
-                        let _ = janela.set_focus();
+                match destino {
+                    DestinoTraducao::Principal => {
+                        if let Some(janela) = app.get_webview_window("main") {
+                            let _ = janela.show();
+                            aguardar_janela_aparecer().await;
+                            // Com "manter no topo" ligado, a janela já fica
+                            // sempre visível acima das outras — não precisa
+                            // roubar o foco do que o usuário está digitando
+                            // a cada tradução.
+                            if !manter_no_topo_ativo(&app) {
+                                let _ = janela.set_focus();
+                            }
+                        }
+                    }
+                    DestinoTraducao::Popover { cursor } => {
+                        if let Some(janela) = app.get_webview_window("popover") {
+                            let tamanho = janela
+                                .outer_size()
+                                .map(|s| (s.width, s.height))
+                                .unwrap_or((360, 160));
+                            let tela = limites_do_monitor_do_cursor(&janela, cursor);
+                            let (x, y) = popover::calcular_posicao_popover(cursor, tamanho, tela);
+
+                            let _ = janela.set_position(tauri::PhysicalPosition::new(x, y));
+                            let _ = janela.show();
+                            aguardar_janela_aparecer().await;
+                            // O popover só some quando perde o foco (ver
+                            // handler de Focused(false) em lib.rs) — sem
+                            // pegar o foco de verdade aqui, ele nunca some
+                            // sozinho ao clicar em outro lugar.
+                            let _ = janela.set_focus();
+                        }
                     }
                 }
             }
             Err(erro) => {
                 println!("[select-translate] Erro ao traduzir: {erro}");
-                let _ = app.emit("traducao-erro", serde_json::json!({ "erro": erro }));
+                let _ = app.emit_to(
+                    EventTarget::labeled(janela_alvo),
+                    "traducao-erro",
+                    serde_json::json!({ "erro": erro }),
+                );
             }
         }
     });

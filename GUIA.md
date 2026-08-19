@@ -933,7 +933,75 @@ Boa parte do código (toda a lógica de tradução, histórico, interface) é re
 
 ---
 
-## 17. Próximos passos
+## 17. Popover de tradução (segundo atalho)
+
+Segundo atalho global independente (padrão `CommandOrControl+Alt+P`, desativado
+por padrão) que mostra a tradução numa bolha pequena e sem decoração perto do
+cursor, no estilo da extensão do Google Tradutor, sem levantar a janela
+principal.
+
+- **Multi-janela**: `tauri.conf.json` ganhou uma segunda entrada em
+  `app.windows[]` (`label: "popover"`), **estática e pré-criada escondida**
+  (`visible: false`) em vez de construída em runtime com
+  `WebviewWindowBuilder`. Criar a janela do zero a cada atalho seria lento
+  demais pro efeito de "bolha instantânea"; com a entrada estática, mostrar
+  depois é só um `.show()` barato, igual ao padrão já usado pra `main`. Cada
+  janela tem sua própria capability (`src-tauri/capabilities/popover.json`,
+  mínima — sem `sql:*`, o histórico continua exclusivo da `main`) e seu
+  próprio documento HTML (`popover.html`), já que janelas do Tauri não
+  compartilham `<head>`/estado JS entre si.
+- **Dois atalhos, um `unregister_all()`**: o plugin `global-shortcut`
+  desregistra **todos** os atalhos globais do processo de uma vez
+  (`unregister_all()`), não um por um — não dá pra só "atualizar" um dos dois
+  sem reconstruir o outro também. Por isso `registrar_atalho_no_backend`
+  (Fase 2) virou `sincronizar_atalhos_no_backend` (`src-tauri/src/lib.rs`):
+  toda mudança em qualquer um dos dois atalhos (trocar, pausar pra gravar,
+  ligar/desligar o popover) reconstrói os dois a partir da store inteira.
+- **`emit_to` em vez de `emit`**: os eventos de tradução (`traducao-iniciada`,
+  `nova-traducao`, `traducao-erro`) eram `app.emit(...)` (broadcast pra todas
+  as janelas). Com duas janelas ouvindo os mesmos eventos, isso faria o
+  popover reagir a traduções disparadas pelo atalho principal e vice-versa.
+  Trocado por `app.emit_to(EventTarget::labeled(janela), ...)`, escolhendo
+  `"main"` ou `"popover"` conforme um novo parâmetro `DestinoTraducao` passado
+  pra `traduzir_e_notificar`/`capturar_e_traduzir` (`captura.rs`).
+- **Posição perto do cursor**: `enigo` (já dependência, usado antes só pra
+  simular teclado) também expõe `Mouse::location()` pra posição do cursor —
+  sem precisar de nova dependência. A posição final (com *clamp* pra não sair
+  da tela) é calculada por uma função pura testável,
+  `calcular_posicao_popover` (`src-tauri/src/popover.rs`), usando os limites
+  do monitor que contém o cursor (`WebviewWindow::available_monitors()`). O
+  cursor é capturado **antes** da chamada assíncrona de tradução, não depois
+  — o usuário pode mover o mouse enquanto a API do provedor responde.
+- **Mostrar/esconder**: reaproveita `aguardar_janela_aparecer()` (a pausa de
+  100ms específica do Linux entre `show()`/`set_focus()`, ver §16/issue #2) —
+  a mesma corrida de threads no GTK vale pra qualquer janela nova, não só a
+  `main`. O popover deveria sumir sozinho ao perder o foco
+  (`WindowEvent::Focused(false)` → `.hide()`) ou com Esc (tratado no
+  frontend) — **só o Esc foi confirmado** no ambiente de teste (WSLg): nem
+  `xdotool windowactivate` nem um clique de verdade em outra janela tiraram o
+  foco da bolha lá, provavelmente porque o WSLg não roda um window manager de
+  verdade (só o compositor mínimo — mesma limitação já batida nesse projeto
+  pra bandeja/Wayland nativo, ver §16). Pode ser só um artefato desse
+  ambiente específico (um desktop real com Mutter/KWin deve implementar
+  foco-segue-clique corretamente), mas fica como risco não confirmado até
+  testar num Linux de verdade.
+- **CSS**: o bloco de tokens de tema (paleta, claro/escuro) foi extraído de
+  `styles.css` pra `tokens.css`, compartilhado por `index.html` e
+  `popover.html` — evita duplicar ~80 linhas idênticas entre janelas.
+  `popover.css` já copia (não importa) o *visual* de algumas classes de
+  `styles.css` (`.bloco-texto`, `.status-carregando`, `.mensagem.erro`) —
+  igual às duas versões (clara/escura) da seta do `<select>`, é pouca coisa
+  estável o bastante pra não valer a pena mais um arquivo compartilhado.
+  Pegadinha real encontrada só na validação visual: `.oculto { display: none }`
+  precisa vir **depois** de `.status-carregando { display: inline-flex }` no
+  arquivo (ou usar um seletor combinado tipo `.status-carregando.oculto`,
+  como `styles.css` já fazia) — com a mesma especificidade, quem vier depois
+  no arquivo vence o empate, e os pontinhos de "carregando" ficavam visíveis
+  pra sempre porque a regra errada estava ganhando.
+
+---
+
+## 18. Próximos passos
 
 Ideias para depois que a versão inicial estiver funcionando (não fazem parte do escopo original, mas são evoluções naturais):
 

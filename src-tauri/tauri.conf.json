@@ -10,9 +10,24 @@
     "withGlobalTauri": true,
     "windows": [
       {
+        "label": "main",
         "title": "Select Translate",
         "width": 800,
         "height": 600
+      },
+      {
+        "label": "popover",
+        "url": "popover.html",
+        "title": "Select Translate — Popover",
+        "width": 360,
+        "height": 160,
+        "visible": false,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "focus": false,
+        "shadow": true
       }
     ],
     "security": {

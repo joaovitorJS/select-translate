@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="popover.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Select Translate — Popover</title>
+    <script type="module" src="/popover.js" defer></script>
+  </head>
+
+  <body class="popover-body">
+    <div class="popover-shell">
+      <p id="popover-erro" class="mensagem erro oculto" role="alert"></p>
+
+      <span id="popover-status" class="status-carregando oculto" aria-live="polite">
+        <span class="ponto"></span><span class="ponto"></span><span class="ponto"></span>
+      </span>
+
+      <p id="popover-original" class="bloco-texto popover-original oculto"></p>
+      <p id="popover-traduzido" class="bloco-texto popover-traduzido oculto"></p>
+    </div>
+  </body>
+</html>

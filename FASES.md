@@ -404,6 +404,25 @@ Bug: com a janela escondida (fechada no X, minimizada na bandeja), traduzir pelo
 
 ---
 
+## Correção — Pacotes Linux não rodavam no Ubuntu 22.04 LTS (glibc)
+
+*(fora da sequência numerada — reportado pelo usuário: `.../libc.so.6: version 'GLIBC_2.38' not found`, num teste real em Ubuntu 22.04 LTS, com o `.deb`/`.AppImage` da v0.2.1)*
+
+Bug: os pacotes Linux publicados nas releases (Fase 11 em diante) foram compilados direto no ambiente de desenvolvimento (Ubuntu 26.04 dentro do WSL2), que tem uma glibc bem mais nova (2.43) do que a maioria das distros que usuários reais rodam. O binário resultante ficou exigindo símbolos `GLIBC_2.38`/`2.39`, que só existem em distros muito recentes — em qualquer coisa mais velha (Ubuntu 22.04 LTS, glibc 2.35, incluído) o binário nem chegava a iniciar.
+
+- [x] `docker/linux-builder.Dockerfile` criado: imagem baseada em `ubuntu:22.04` com as mesmas libs de sistema do Tauri v2 + Rust + `tauri-cli` — buildar dentro dela (em vez de no host) faz o binário linkar contra a glibc 2.35 do Ubuntu 22.04, não a do host
+- [x] Pacotes da v0.2.1 recompilados com essa imagem e republicados no mesmo release (mesmos nomes de arquivo, GitHub aceita reupload em release recém-criado) — confirmado com `objdump -T select-translate | grep GLIBC_ | sort -V`: máximo caiu de `GLIBC_2.39` pra `GLIBC_2.34`
+- [x] Notas da release atualizadas explicando o problema e avisando quem já tinha baixado o arquivo quebrado pra baixar de novo
+
+**Observações:**
+- glibc é retrocompatível (binário linkado contra uma versão mais velha roda em qualquer sistema com glibc igual ou mais nova, nunca o contrário) — por isso a regra geral é **sempre compilar na distro mais antiga que você quer suportar**, não na sua própria. `ubuntu:22.04` foi escolhido por ser a LTS mais antiga ainda amplamente usada; se aparecer relato de alguém numa distro ainda mais antiga, a mesma técnica se aplica trocando a tag da imagem base.
+- Todas as libs de build do Tauri (`libwebkit2gtk-4.1-dev` incluída) já estão disponíveis nos repositórios padrão do Ubuntu 22.04 (`jammy-updates`) — não precisou de PPA nenhuma.
+- Build rodado com `--rm` e bind mount do repo como somente-leitura (`:ro`) + um `CARGO_TARGET_DIR` isolado fora do repo — não toca no `target/` usado pelos builds normais do host.
+- Validado rodando o `.AppImage` recompilado (`--appimage-extract-and-run`, mesmo ambiente WSLg da Fase 11): sobe normalmente, atalho global registra.
+- Vale usar essa mesma imagem em toda release futura com artefato Linux, em vez de buildar direto no host de desenvolvimento.
+
+---
+
 ## Resumo visual
 
 ```

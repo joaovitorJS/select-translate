@@ -4032,7 +4032,7 @@ dependencies = [
 
 [[package]]
 name = "select-translate"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "enigo",
  "reqwest",

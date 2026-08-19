@@ -388,6 +388,22 @@ Bug: os quatro `<select>` do app (Tema, Idioma de destino, Provedor de traduçã
 
 ---
 
+## Correção — Janela não reaparece sozinha ao traduzir no Linux
+
+*(fora da sequência numerada — reportado pelo usuário via [issue #2](https://github.com/joaovitorJS/select-translate/issues/2), mesmo teste real em Ubuntu 24.04 LTS da issue #1)*
+
+Bug: com a janela escondida (fechada no X, minimizada na bandeja), traduzir pelo atalho global não trazia a janela de volta — no Windows funciona normalmente. Causa raiz confirmada lendo o código-fonte do `tao` (dependência de baixo nível do Tauri, `platform_impl/linux/window.rs`): no Linux, `show()` só enfileira um pedido pra rodar na próxima volta do loop principal do GTK — quem chama `show()` é a task assíncrona da tradução, numa thread diferente da do GTK, e a chamada retorna antes da janela ficar visível de verdade. `set_focus()`, chamado logo em seguida, só manda o pedido de foco se a janela já estiver marcada como visível (`!minimized && get_visible()`) — como essa flag ainda não foi atualizada, o pedido de foco é descartado em silêncio.
+
+- [x] Nova função `aguardar_janela_aparecer()` em `captura.rs`, com `#[cfg(target_os = "linux")]`: uma pausa de 100ms entre `show()` e `set_focus()`, tempo de sobra pro loop do GTK processar o `show()` enfileirado. No Windows/macOS vira um no-op (`#[cfg(not(target_os = "linux"))]`) — a chamada nativa lá já é síncrona, não precisa da pausa
+- [x] Nova dependência direta `tokio` (feature `time`) — já vinha transitivamente (via `reqwest`/`tauri`), só precisou declarar pra poder usar `tokio::time::sleep` diretamente
+
+**Observações:**
+- Sem reprodução automática de verdade (é uma race condition de timing entre threads, não lógica pura isolável em `#[test]`), mas a causa raiz foi confirmada com um experimento controlado e descartado depois: um hook temporário no `setup()` que escondia a janela, chamava `show()` + `set_focus()` e imprimia `is_focused()`/`is_visible()` — **sem** a pausa, `is_focused() = Ok(false)` (foco perdido, bug reproduzido); **com** a pausa de 100ms, `is_focused() = Ok(true)`. Esse hook foi só pra diagnóstico e não sobrou nenhum resíduo dele no código commitado.
+- Mesmo ambiente de teste da Fase 11 (Linux/WSLg via XWayland, `xdotool`/`xclip` pra simular seleção de texto + atalho global).
+- `cargo test` (19 testes) continua passando sem alteração — a mudança é 100% timing/side-effect, sem lógica pura nova pra testar.
+
+---
+
 ## Resumo visual
 
 ```

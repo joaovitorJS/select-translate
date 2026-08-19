@@ -156,6 +156,25 @@ pub fn iniciar_monitoramento_automatico(app: AppHandle) {
     });
 }
 
+/// No Linux, `show()` só enfileira um pedido pra thread principal do
+/// GTK (roda numa próxima volta do loop de eventos) — quem chama
+/// `show()` é a task async da tradução, numa thread diferente da do
+/// GTK, então a chamada retorna antes da janela virar visível de
+/// verdade. Sem essa pausa, o `set_focus()` logo em seguida ainda lê
+/// a janela como "não visível" e descarta o pedido de foco em
+/// silêncio — a janela não trava, só nunca aparece sozinha depois de
+/// escondida (issue #2). Causa raiz confirmada lendo o código do
+/// `tao` (dependência do Tauri): `set_focus()` só manda o pedido de
+/// fato se `!minimized && get_visible()`. No Windows a chamada nativa
+/// já é síncrona, não precisa dessa pausa.
+#[cfg(target_os = "linux")]
+async fn aguardar_janela_aparecer() {
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+}
+
+#[cfg(not(target_os = "linux"))]
+async fn aguardar_janela_aparecer() {}
+
 /// Compartilhado pelos dois modos de captura: chama o provedor de
 /// tradução configurado e notifica a UI (eventos de início/erro/sucesso
 /// + trazer janela pra frente) durante o processo.
@@ -186,6 +205,7 @@ fn traduzir_e_notificar(app: AppHandle, texto: String) {
 
                 if let Some(janela) = app.get_webview_window("main") {
                     let _ = janela.show();
+                    aguardar_janela_aparecer().await;
                     // Com "manter no topo" ligado, a janela já fica sempre
                     // visível acima das outras — não precisa roubar o foco
                     // do que o usuário está digitando a cada tradução.

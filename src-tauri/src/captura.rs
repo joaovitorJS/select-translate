@@ -252,6 +252,32 @@ fn limites_do_monitor_do_cursor(
     }
 }
 
+/// Mostra a janela do popover perto do `cursor` já com o indicador de
+/// carregando visível — chamado **antes** da chamada à API de
+/// tradução, não depois. Se esperássemos a tradução terminar pra só
+/// então mostrar a janela (como a `main` faz), o usuário quase nunca
+/// veria o "carregando": a API costuma responder rápido o bastante
+/// pra a janela já apareceria com o resultado pronto, sem feedback
+/// visual nenhum de que algo estava acontecendo.
+async fn mostrar_popover(app: &AppHandle, cursor: (i32, i32)) {
+    if let Some(janela) = app.get_webview_window("popover") {
+        let tamanho = janela
+            .outer_size()
+            .map(|s| (s.width, s.height))
+            .unwrap_or((320, 70));
+        let tela = limites_do_monitor_do_cursor(&janela, cursor);
+        let (x, y) = popover::calcular_posicao_popover(cursor, tamanho, tela);
+
+        let _ = janela.set_position(tauri::PhysicalPosition::new(x, y));
+        let _ = janela.show();
+        aguardar_janela_aparecer().await;
+        // O popover só some quando perde o foco (ver handler de
+        // Focused(false) em lib.rs) — sem pegar o foco de verdade
+        // aqui, ele nunca some sozinho ao clicar em outro lugar.
+        let _ = janela.set_focus();
+    }
+}
+
 /// Compartilhado pelos dois atalhos globais e pelo modo automático:
 /// chama o provedor de tradução configurado e notifica a UI (eventos
 /// de início/erro/sucesso + mostrar o resultado na janela certa)
@@ -265,6 +291,10 @@ fn traduzir_e_notificar(app: AppHandle, texto: String, destino: DestinoTraducao)
     );
 
     tauri::async_runtime::spawn(async move {
+        if let DestinoTraducao::Popover { cursor } = destino {
+            mostrar_popover(&app, cursor).await;
+        }
+
         let (config, idioma) = match traducao::configuracao_do_store(&app) {
             Ok(resultado) => resultado,
             Err(erro) => {
@@ -291,36 +321,18 @@ fn traduzir_e_notificar(app: AppHandle, texto: String, destino: DestinoTraducao)
                     }),
                 );
 
-                match destino {
-                    DestinoTraducao::Principal => {
-                        if let Some(janela) = app.get_webview_window("main") {
-                            let _ = janela.show();
-                            aguardar_janela_aparecer().await;
-                            // Com "manter no topo" ligado, a janela já fica
-                            // sempre visível acima das outras — não precisa
-                            // roubar o foco do que o usuário está digitando
-                            // a cada tradução.
-                            if !manter_no_topo_ativo(&app) {
-                                let _ = janela.set_focus();
-                            }
-                        }
-                    }
-                    DestinoTraducao::Popover { cursor } => {
-                        if let Some(janela) = app.get_webview_window("popover") {
-                            let tamanho = janela
-                                .outer_size()
-                                .map(|s| (s.width, s.height))
-                                .unwrap_or((320, 70));
-                            let tela = limites_do_monitor_do_cursor(&janela, cursor);
-                            let (x, y) = popover::calcular_posicao_popover(cursor, tamanho, tela);
-
-                            let _ = janela.set_position(tauri::PhysicalPosition::new(x, y));
-                            let _ = janela.show();
-                            aguardar_janela_aparecer().await;
-                            // O popover só some quando perde o foco (ver
-                            // handler de Focused(false) em lib.rs) — sem
-                            // pegar o foco de verdade aqui, ele nunca some
-                            // sozinho ao clicar em outro lugar.
+                // Popover já foi mostrado antes da chamada à API (ver
+                // `mostrar_popover`) — só a principal precisa ser
+                // trazida pra frente agora, depois de saber que deu certo.
+                if let DestinoTraducao::Principal = destino {
+                    if let Some(janela) = app.get_webview_window("main") {
+                        let _ = janela.show();
+                        aguardar_janela_aparecer().await;
+                        // Com "manter no topo" ligado, a janela já fica
+                        // sempre visível acima das outras — não precisa
+                        // roubar o foco do que o usuário está digitando
+                        // a cada tradução.
+                        if !manter_no_topo_ativo(&app) {
                             let _ = janela.set_focus();
                         }
                     }
